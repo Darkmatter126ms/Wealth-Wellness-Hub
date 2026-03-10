@@ -49,7 +49,7 @@ const api = {
   deleteGoal(id) { return this.request('DELETE', '/goals/' + id); },
   getEmailPrefs() { return this.request('GET', '/email-preferences'); },
   updateEmailPrefs(data) { return this.request('PUT', '/email-preferences', data); },
-  sendReport(email, lang = 'en') { return this.request('POST', '/email-preferences/send-now', { email, lang }); },
+  sendReport(email, lang = 'en', displayCurrency = 'SGD') { return this.request('POST', '/email-preferences/send-now', { email, lang, displayCurrency }); },
   submitFeedback(data) { return this.request('POST', '/feedback', data); },
   submitRating(stars, comment) { return this.request('POST', '/rating', { stars, comment }); },
   dismissRating() { return this.request('POST', '/rating/dismiss'); },
@@ -2439,7 +2439,7 @@ const GoalsView = ({ displayCurrency }) => {
 };
 
 /* ─────────── EXPORT VIEW ─────────── */
-const ExportView = () => {
+const ExportView = ({ displayCurrency = 'SGD' }) => {
   const { t, i18n } = useTranslation();
   const [exporting, setExporting] = useState(false);
   const [emailPrefs, setEmailPrefs] = useState(null);
@@ -2462,7 +2462,7 @@ const ExportView = () => {
   const handleFreqChange = async (freq) => { try { const updated = await api.updateEmailPrefs({ reportFrequency: freq }); setEmailPrefs(updated); } catch (e) { console.error(e); } };
   const handleSendNow = async () => {
     if (!customEmail) return; setSending(true); setSentMsg("");
-    try { await api.sendReport(customEmail, i18n.language || 'en'); setSentMsg(t('export.reportSent', { email: customEmail })); const updated = await api.getEmailPrefs(); setEmailPrefs(updated); }
+    try { await api.sendReport(customEmail, i18n.language || 'en', displayCurrency); setSentMsg(t('export.reportSent', { email: customEmail })); const updated = await api.getEmailPrefs(); setEmailPrefs(updated); }
     catch (e) { setSentMsg(t('export.reportFailed')); }
     setSending(false);
   };
@@ -2885,7 +2885,7 @@ const App = () => {
       case "insights":   return <InsightsView insights={insights} displayCurrency={displayCurrency} />;
       case "goals":      return <GoalsView displayCurrency={displayCurrency} />;
       case "scenarios":  return <ScenarioView displayCurrency={displayCurrency} />;
-      case "export":     return <ExportView />;
+      case "export":     return <ExportView displayCurrency={displayCurrency} />;
       case "settings":   return <SettingsView user={user} setUser={setUser} displayCurrency={displayCurrency} setDisplayCurrency={handleSetDisplayCurrency} fxLastUpdated={fxLastUpdated} userRiskProfile={userRiskProfile} onRetakeAssessment={handleRetakeAssessment} theme={theme} setTheme={handleSetTheme} />;
       default:           return <DashboardView portfolio={portfolio} wellness={wellness} insights={insights} onNavigate={setCurrentView} user={user} displayCurrency={displayCurrency} assetCurrencies={assetCurrencies} />;
     }
