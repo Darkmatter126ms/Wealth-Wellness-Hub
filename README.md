@@ -1,10 +1,10 @@
-# WealthWell — Wealth Wellness Hub
+# WealthWell: Wealth Wellness Hub
 
-A unified financial wellness dashboard bringing together traditional and digital assets into a single, intuitive interface. Built for the FinTech Innovators Hackathon 2026.
+A unified financial wellness dashboard bringing together traditional and digital assets into a single, intuitive interface. With built-in LLM-integration to provide personalised insights on one's personal finance. Built for the FinTech Innovators Hackathon 2026.
 
 ---
 
-## 🚀 Quick Start (Docker — Recommended for Judges)
+## 🚀 Quick Start (Docker: Recommended for Judges)
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
