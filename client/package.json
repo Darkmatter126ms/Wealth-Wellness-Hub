@@ -1,0 +1,33 @@
+{
+  "name": "wealthwell-client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "install-all": "npm install && cd client && npm install",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "lucide-react": "^0.263.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "nodemailer": "^6.9.0",
+    "i18next": "^23.11.5",
+    "react-i18next": "^14.1.3",
+    "i18next-browser-languagedetector": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
+  }
+}
