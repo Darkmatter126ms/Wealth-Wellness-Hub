@@ -1557,6 +1557,22 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
   const lang = (req.body.lang && EMAIL_TR[req.body.lang]) ? req.body.lang : 'en';
   const tr = EMAIL_TR[lang];
 
+  // ── Currency setup ────────────────────────────────────────────────────────
+  // fxCache.rates: { SGD: 1, USD: 0.746, MYR: 3.333, GBP: 0.581, EUR: 0.680 }
+  // 1 SGD = fxCache.rates[code] units of that currency.
+  const CURRENCY_SYMBOLS = { SGD: 'S$', USD: 'US$', MYR: 'RM', GBP: '£', EUR: '€' };
+  const displayCurrency = (req.body.displayCurrency && CURRENCY_SYMBOLS[req.body.displayCurrency])
+    ? req.body.displayCurrency
+    : 'SGD';
+  const fxRate  = fxCache.rates[displayCurrency] ?? 1; // multiply SGD value by this
+  const symbol  = CURRENCY_SYMBOLS[displayCurrency];
+
+  // Convert a raw SGD value to the display currency and format it
+  const fmtCurrency = (sgdValue) => {
+    const converted = sgdValue * fxRate;
+    return `${symbol}${Math.round(converted).toLocaleString('en-SG')}`;
+  };
+
   const portfolio = portfolios[req.userId];
   const totalWealth = portfolio.assets.reduce((s, a) => s + a.value, 0);
   const wellnessScore = computeWellnessScore(portfolio.assets, req.userId);
@@ -1572,7 +1588,7 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
       const risk = RISK_DATABASE._typeDefaults[type] || {};
       const translatedType = tr.assetTypes[type] || type;
       const translatedRisk = (risk.riskLevel && tr.riskLevel[risk.riskLevel]) ? tr.riskLevel[risk.riskLevel] : (risk.riskLevel || 'N/A');
-      return `<tr><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9">${translatedType}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9;text-align:right">$${value.toLocaleString()}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#94A3B8;text-align:right">${pct}%</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B"><span style="color:${risk.color || '#94A3B8'};font-weight:600">${translatedRisk}</span></td></tr>`;
+      return `<tr><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9">${translatedType}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9;text-align:right">${fmtCurrency(value)}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#94A3B8;text-align:right">${pct}%</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B"><span style="color:${risk.color || '#94A3B8'};font-weight:600">${translatedRisk}</span></td></tr>`;
     }).join('');
 
   // Build insights section — resolve title/summary from EMAIL_TR using titleKey + summaryParams
@@ -1619,7 +1635,7 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
     <div style="display:flex;text-align:center">
       <div style="flex:1">
         <div style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${tr.totalNetWorth}</div>
-        <div style="color:#F1F5F9;font-size:28px;font-weight:700">$${totalWealth.toLocaleString()}</div>
+        <div style="color:#F1F5F9;font-size:28px;font-weight:700">${fmtCurrency(totalWealth)}</div>
         <div style="color:#10B981;font-size:13px;margin-top:4px">${tr.monthlyChange}</div>
       </div>
       <div style="width:1px;background:rgba(148,163,184,0.15);margin:0 20px"></div>
@@ -1675,7 +1691,7 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
     console.log(`\n📧 EMAIL REPORT (no SMTP configured — showing preview)`);
     console.log(`   To: ${recipientEmail}`);
     console.log(`   Subject: ${emailSubject}`);
-    console.log(`   Lang: ${lang} | Net Worth: $${totalWealth.toLocaleString()}, Wellness: ${wellnessScore.overall}/100\n`);
+    console.log(`   Lang: ${lang} | Net Worth: ${fmtCurrency(totalWealth)} (${displayCurrency}), Wellness: ${wellnessScore.overall}/100\n`);
 
     if (emailPreferences[req.userId]) {
       emailPreferences[req.userId].lastSent = new Date().toISOString().split('T')[0];
