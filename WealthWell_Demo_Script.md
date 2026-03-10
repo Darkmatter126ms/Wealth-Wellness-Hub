@@ -53,7 +53,7 @@ Want to receive a summarised report instantly? Go to Export, key in your email, 
 
 WealthWell also generates **personalised insights** automatically. If your crypto allocation is too volatile, it flags it. If you're under your SRS contribution cap and leaving tax savings on the table, it tells you exactly how much you are missing.
 
-And if you want to go deeper, the **AI Coach** is right here. *[Type: "Should I top up my SRS this year?"]* — it responds with context-aware, personalised advice based on your actual portfolio.
+And if you want to go deeper, the **AI Coach** is right here, powered by a real LLM using Groq’s ultra-low latency inference with the Llama model. *[Type: "Should I top up my SRS this year?"]* — it responds with context-aware, personalised advice based on your actual portfolio.
 
 On top of that, the **Scenario Simulator** lets you stress-test your wealth. What happens to your net worth if markets crash 30%? Now you know before it happens.
 
