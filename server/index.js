@@ -3,10 +3,172 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import { createTransport } from 'nodemailer';
+import { fileURLToPath } from 'url';
+import path from 'path';
+const __dirname_patch = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ──────────────────────────────────────────────
+// EMAIL REPORT TRANSLATIONS
+// Server-side mirror of the client locale files.
+// Keyed by the same lang codes i18next uses (en/zh/hi/es/fr).
+// Each entry covers every hardcoded string in the email template.
+// ──────────────────────────────────────────────
+const EMAIL_TR = {
+  en: {
+    subject:           'WealthWell Monthly Report — {date}',
+    reportTitle:       'WealthWell Monthly Report',
+    totalNetWorth:     'TOTAL NET WORTH',
+    wellnessScore:     'WELLNESS SCORE',
+    monthlyChange:     '▲ +1.6% this month',
+    excellent:         'Excellent',
+    good:              'Good',
+    needsAttention:    'Needs Attention',
+    wellnessBreakdown: 'Wellness Breakdown',
+    assetAllocation:   'Asset Allocation',
+    colType:           'Type',
+    colValue:          'Value',
+    colWeight:         'Weight',
+    colRisk:           'Risk',
+    keyInsights:       'Key Insights',
+    disclaimer:        'This report is for informational purposes only and does not constitute financial advice.',
+    assetTypes: { Cash:'Cash', Retirement:'Retirement', Equities:'Equities', REITs:'REITs', 'Fixed Income':'Fixed Income', Crypto:'Crypto', Property:'Property', Vehicle:'Vehicle' },
+    riskLevel:  { 'Very Low':'Very Low', 'Low':'Low', 'Low-Medium':'Low-Medium', 'Medium':'Medium', 'Medium-High':'Medium-High', 'High':'High', 'Very High':'Very High', 'Depreciating':'Depreciating', 'Unknown':'Unknown' },
+    metrics:    { 'Diversification':'Diversification', 'Liquidity':'Liquidity', 'Growth':'Growth', 'Risk Mgmt':'Risk Mgmt', 'Tax Efficiency':'Tax Efficiency', 'Emergency Fund':'Emergency Fund', 'Behavioral Resilience':'Behavioral Resilience' },
+    insightCards: {
+      ins_crypto:   { title: 'Crypto Volatility Exposure',           summary: 'Your crypto allocation ({cryptoPct}%) carries high volatility. A 50% drawdown would reduce your net worth by ${drawdown}.' },
+      ins_srs:      { title: 'SRS Top-Up Tax Savings Available',      summary: "You're ${gap} below the SRS contribution cap. Topping up could save you up to ${taxSaving} in taxes (at 7% marginal rate)." },
+      ins_emergency:{ title: 'Strong Emergency Fund',                 summary: 'Your cash holdings cover {months} months of estimated expenses, exceeding the recommended 6-month buffer by ${excess}.' },
+      ins_vehicle:  { title: 'Vehicle Depreciation Impact',           summary: 'Your car is depreciating at ~{pct}% annually, reducing net wealth by ~${annualLoss}/year.' },
+      ins_equity:   { title: 'Rebalance Equity Allocation',           summary: 'Your Singapore equities ({stiPct}%) have underperformed relative to US equities (+{spPct}%). Consider geographic diversification.' },
+      ins_cpf:      { title: 'CPF Balances On Track',                 summary: 'Your combined CPF balance of ${cpfTotal} is growing steadily. At current contribution rates, you are projected to meet the Basic Retirement Sum by age 55.' },
+      ins_property: { title: 'High Property Concentration',           summary: 'Property makes up {propertyPct}% of your net worth. While common in Singapore, this creates concentration risk if the property market corrects.' },
+    }
+  },
+  zh: {
+    subject:           'WealthWell 月度报告 — {date}',
+    reportTitle:       'WealthWell 月度报告',
+    totalNetWorth:     '总净资产',
+    wellnessScore:     '健康评分',
+    monthlyChange:     '▲ 本月 +1.6%',
+    excellent:         '优秀',
+    good:              '良好',
+    needsAttention:    '需要关注',
+    wellnessBreakdown: '健康状况细分',
+    assetAllocation:   '资产配置',
+    colType:           '类型',
+    colValue:          '价值',
+    colWeight:         '占比',
+    colRisk:           '风险',
+    keyInsights:       '关键洞察',
+    disclaimer:        '本报告仅供参考，不构成任何财务建议。',
+    assetTypes: { Cash:'现金', Retirement:'退休金', Equities:'股票', REITs:'房地产信托', 'Fixed Income':'固定收益', Crypto:'加密货币', Property:'房产', Vehicle:'车辆' },
+    riskLevel:  { 'Very Low':'极低', 'Low':'低', 'Low-Medium':'中低', 'Medium':'中等', 'Medium-High':'中高', 'High':'高', 'Very High':'极高', 'Depreciating':'贬値中', 'Unknown':'未知' },
+    metrics:    { 'Diversification':'多样性', 'Liquidity':'流动性', 'Growth':'增长', 'Risk Mgmt':'风险管理', 'Tax Efficiency':'税务效率', 'Emergency Fund':'应急资金', 'Behavioral Resilience':'行为韧性' },
+    insightCards: {
+      ins_crypto:   { title: '加密货币波动风险',     summary: '您的加密货币配置（{cryptoPct}%）波动性极高。50%的跌幅将使净资产减少${drawdown}。' },
+      ins_srs:      { title: '可补足SRS供款节税',     summary: '您距SRS供款上限还差${gap}。补足后可节省最多${taxSaving}的税款（按7%边际税率）。' },
+      ins_emergency:{ title: '应急基金充足',          summary: '您的现金储备可覆盖{months}个月的预计支出，超出建议的6个月缓冲额${excess}。' },
+      ins_vehicle:  { title: '车辆折旧影响',          summary: '您的汽车每年折旧约{pct}%，每年净资产减少约${annualLoss}。' },
+      ins_equity:   { title: '重新平衡股票配置',      summary: '您的新加坡股票（{stiPct}%）表现落后于美国股票（+{spPct}%）。建议考虑地理分散投资。' },
+      ins_cpf:      { title: '公积金余额步入正轨',    summary: '您的公积金总余额${cpfTotal}持续稳定增长。按目前缴款率，预计您将在55岁前达到基本退休存款。' },
+      ins_property: { title: '房产集中度偏高',        summary: '房产占您净资产的{propertyPct}%。这在新加坡较为普遍，但若房产市场调整，将产生集中度风险。' },
+    }
+  },
+  hi: {
+    subject:           'WealthWell मासिक रिपोर्ट — {date}',
+    reportTitle:       'WealthWell मासिक रिपोर्ट',
+    totalNetWorth:     'कुल नेट वर्थ',
+    wellnessScore:     'वेलनेस स्कोर',
+    monthlyChange:     '▲ इस माह +1.6%',
+    excellent:         'उत्कृष्ट',
+    good:              'अच्छा',
+    needsAttention:    'ध्यान आवश्यक',
+    wellnessBreakdown: 'वेलनेस विवरण',
+    assetAllocation:   'परिसंपत्ति आवंटन',
+    colType:           'प्रकार',
+    colValue:          'मूल्य',
+    colWeight:         'भार',
+    colRisk:           'जोखिम',
+    keyInsights:       'मुख्य अंतर्दृष्टि',
+    disclaimer:        'यह रिपोर्ट केवल सूचनात्मक उद्देश्यों के लिए है और वित्तीय सलाह नहीं है।',
+    assetTypes: { Cash:'नकद', Retirement:'सेवानिवृत्ति', Equities:'इक्विटी', REITs:'REITs', 'Fixed Income':'निश्चित आय', Crypto:'क्रिप्टो', Property:'संपत्ति', Vehicle:'वाहन' },
+    riskLevel:  { 'Very Low':'बहुत कम', 'Low':'कम', 'Low-Medium':'कम-मध्यम', 'Medium':'मध्यम', 'Medium-High':'मध्यम-अधिक', 'High':'अधिक', 'Very High':'बहुत अधिक', 'Depreciating':'मूल्यह्रास', 'Unknown':'अज्ञात' },
+    metrics:    { 'Diversification':'विविधीकरण', 'Liquidity':'तरलता', 'Growth':'वृद्धि', 'Risk Mgmt':'जोखिम प्रबंधन', 'Tax Efficiency':'कर दक्षता', 'Emergency Fund':'आपातकालीन निधि', 'Behavioral Resilience':'व्यवहार लचीलापन' },
+    insightCards: {
+      ins_crypto:   { title: 'क्रिप्टो अस्थिरता जोखिम',         summary: 'आपका क्रिप्टो आवंटन ({cryptoPct}%) अत्यधिक अस्थिर है। 50% की गिरावट आपकी नेट वर्थ को ${drawdown} कम कर देगी।' },
+      ins_srs:      { title: 'SRS टॉप-अप से कर बचत उपलब्ध',     summary: 'आप SRS योगदान सीमा से ${gap} कम हैं। टॉप-अप करने पर 7% सीमांत दर पर ${taxSaving} तक की कर बचत हो सकती है।' },
+      ins_emergency:{ title: 'मजबूत आपातकालीन निधि',             summary: 'आपकी नकद बचत {months} महीने के खर्च को कवर करती है, जो अनुशंसित 6 माह की सीमा से ${excess} अधिक है।' },
+      ins_vehicle:  { title: 'वाहन मूल्यह्रास प्रभाव',            summary: 'आपकी कार सालाना ~{pct}% घट रही है, जिससे नेट वर्थ ~${annualLoss}/वर्ष कम हो रही है।' },
+      ins_equity:   { title: 'इक्विटी आवंटन पुनर्संतुलन',        summary: 'आपके सिंगापुर इक्विटी ({stiPct}%) का प्रदर्शन अमेरिकी इक्विटी (+{spPct}%) से कमज़ोर रहा है। भौगोलिक विविधीकरण पर विचार करें।' },
+      ins_cpf:      { title: 'CPF बैलेंस सही रास्ते पर',          summary: 'आपका संयुक्त CPF बैलेंस ${cpfTotal} स्थिर गति से बढ़ रहा है। वर्तमान योगदान दर पर, आप 55 वर्ष की आयु तक बेसिक रिटायरमेंट सम पूरा करने की राह पर हैं।' },
+      ins_property: { title: 'संपत्ति में अत्यधिक केंद्रण',       summary: 'संपत्ति आपकी नेट वर्थ का {propertyPct}% है। सिंगापुर में यह सामान्य है, लेकिन बाजार सुधार की स्थिति में केंद्रण जोखिम उत्पन्न होता है।' },
+    }
+  },
+  es: {
+    subject:           'Informe Mensual de WealthWell — {date}',
+    reportTitle:       'Informe Mensual de WealthWell',
+    totalNetWorth:     'PATRIMONIO NETO TOTAL',
+    wellnessScore:     'PUNTUACIÓN DE BIENESTAR',
+    monthlyChange:     '▲ +1.6% este mes',
+    excellent:         'Excelente',
+    good:              'Bueno',
+    needsAttention:    'Necesita Atención',
+    wellnessBreakdown: 'Desglose de Bienestar',
+    assetAllocation:   'Asignación de Activos',
+    colType:           'Tipo',
+    colValue:          'Valor',
+    colWeight:         'Peso',
+    colRisk:           'Riesgo',
+    keyInsights:       'Perspectivas Clave',
+    disclaimer:        'Este informe es solo informativo y no constituye asesoramiento financiero.',
+    assetTypes: { Cash:'Efectivo', Retirement:'Jubilación', Equities:'Renta Variable', REITs:'REITs', 'Fixed Income':'Renta Fija', Crypto:'Cripto', Property:'Inmuebles', Vehicle:'Vehículo' },
+    riskLevel:  { 'Very Low':'Muy Bajo', 'Low':'Bajo', 'Low-Medium':'Bajo-Medio', 'Medium':'Medio', 'Medium-High':'Medio-Alto', 'High':'Alto', 'Very High':'Muy Alto', 'Depreciating':'En Depreciación', 'Unknown':'Desconocido' },
+    metrics:    { 'Diversification':'Diversificación', 'Liquidity':'Liquidez', 'Growth':'Crecimiento', 'Risk Mgmt':'Gestión de Riesgo', 'Tax Efficiency':'Eficiencia Fiscal', 'Emergency Fund':'Fondo de Emergencia', 'Behavioral Resilience':'Resiliencia Conductual' },
+    insightCards: {
+      ins_crypto:   { title: 'Exposición a la Volatilidad de Criptomonedas', summary: 'Su asignación a criptomonedas ({cryptoPct}%) conlleva alta volatilidad. Una caída del 50% reduciría su patrimonio neto en ${drawdown}.' },
+      ins_srs:      { title: 'Ahorro Fiscal Disponible con Aportación SRS',   summary: 'Le faltan ${gap} para alcanzar el límite de aportación SRS. Completarlo podría ahorrarle hasta ${taxSaving} en impuestos (tasa marginal del 7%).' },
+      ins_emergency:{ title: 'Fondo de Emergencia Sólido',                    summary: 'Sus ahorros en efectivo cubren {months} meses de gastos estimados, superando el colchón recomendado de 6 meses en ${excess}.' },
+      ins_vehicle:  { title: 'Impacto de la Depreciación del Vehículo',       summary: 'Su vehículo se deprecia a ~{pct}% anual, reduciendo el patrimonio neto en ~${annualLoss}/año.' },
+      ins_equity:   { title: 'Reequilibrar Asignación de Renta Variable',     summary: 'Sus acciones de Singapur ({stiPct}%) han tenido un rendimiento inferior al de las acciones estadounidenses (+{spPct}%). Considere diversificar geográficamente.' },
+      ins_cpf:      { title: 'Saldos CPF en Buen Camino',                     summary: 'Su saldo CPF combinado de ${cpfTotal} crece de forma constante. Con las tasas de aportación actuales, está en camino de alcanzar la Suma Básica de Jubilación a los 55 años.' },
+      ins_property: { title: 'Alta Concentración en Propiedades',              summary: 'Las propiedades representan el {propertyPct}% de su patrimonio neto. Aunque es común en Singapur, esto genera riesgo de concentración si el mercado inmobiliario corrige.' },
+    }
+  },
+  fr: {
+    subject:           'Rapport Mensuel WealthWell — {date}',
+    reportTitle:       'Rapport Mensuel WealthWell',
+    totalNetWorth:     'PATRIMOINE NET TOTAL',
+    wellnessScore:     'SCORE DE BIEN-ÊRE',
+    monthlyChange:     '▲ +1,6% ce mois',
+    excellent:         'Excellent',
+    good:              'Bien',
+    needsAttention:    'Attention Requise',
+    wellnessBreakdown: 'Détail du Bien-être',
+    assetAllocation:   "Allocation d'Actifs",
+    colType:           'Type',
+    colValue:          'Valeur',
+    colWeight:         'Poids',
+    colRisk:           'Risque',
+    keyInsights:       'Perspectives Clés',
+    disclaimer:        "Ce rapport est fourni à titre informatif uniquement et ne constitue pas un conseil financier.",
+    assetTypes: { Cash:'Liquidités', Retirement:'Retraite', Equities:'Actions', REITs:'REITs', 'Fixed Income':'Revenu Fixe', Crypto:'Crypto', Property:'Immobilier', Vehicle:'Véhicule' },
+    riskLevel:  { 'Very Low':'Très Faible', 'Low':'Faible', 'Low-Medium':'Faible-Moyen', 'Medium':'Moyen', 'Medium-High':'Moyen-Élevé', 'High':'Élevé', 'Very High':'Très Élevé', 'Depreciating':'En Dépréciation', 'Unknown':'Inconnu' },
+    metrics:    { 'Diversification':'Diversification', 'Liquidity':'Liquidité', 'Growth':'Croissance', 'Risk Mgmt':'Gestion des Risques', 'Tax Efficiency':'Efficacité Fiscale', 'Emergency Fund':"Fonds d'Urgence", 'Behavioral Resilience':'Résilience Comportementale' },
+    insightCards: {
+      ins_crypto:   { title: 'Exposition à la Volatilité des Cryptos',  summary: 'Votre allocation en cryptomonnaies ({cryptoPct}%) est très volatile. Une baisse de 50% réduirait votre patrimoine net de ${drawdown}.' },
+      ins_srs:      { title: 'Économies Fiscales Disponibles via SRS',   summary: "Il vous manque ${gap} pour atteindre le plafond de cotisation SRS. Compléter pourrait vous faire économiser jusqu'à ${taxSaving} d'impôts (taux marginal de 7%)." },
+      ins_emergency:{ title: "Fonds d'Urgence Solide",                   summary: 'Vos liquidités couvrent {months} mois de dépenses estimées, dépassant le tampon recommandé de 6 mois de ${excess}.' },
+      ins_vehicle:  { title: 'Impact de la Dépréciation du Véhicule',    summary: 'Votre voiture se déprécie d environ {pct}% par an, réduisant votre patrimoine net d environ ${annualLoss}/an.' },
+      ins_equity:   { title: "Rééquilibrer l'Allocation Actions",         summary: 'Vos actions singapouriennes ({stiPct}%) ont sous-performé par rapport aux actions américaines (+{spPct}%). Envisagez une diversification géographique.' },
+      ins_cpf:      { title: 'Soldes CPF en Bonne Voie',                  summary: 'Votre solde CPF combiné de ${cpfTotal} croît régulièrement. Aux taux de cotisation actuels, vous êtes en bonne voie pour atteindre la Somme de Retraite de Base à 55 ans.' },
+      ins_property: { title: 'Forte Concentration en Immobilier',         summary: "L'immobilier représente {propertyPct}% de votre patrimoine net. Bien que courant à Singapour, cela crée un risque de concentration si le marché immobilier se corrige." },
+    }
+  },
+};
 
 // ──────────────────────────────────────────────
 // ASSET RISK CLASSIFICATION DATABASE
@@ -172,17 +334,118 @@ const portfolios = {
       { id: 'a13', name: 'HDB Property', type: 'Property', institution: 'HDB', value: 580000, change: 0.02, icon: 'home', color: '#D946EF' },
       { id: 'a14', name: 'Car (Toyota)', type: 'Vehicle', institution: 'Personal', value: 45000, change: -0.15, icon: 'car', color: '#78716C' },
     ],
-    wealthHistory: [
-      { month: 'Sep 2025', value: 920000 },
-      { month: 'Oct 2025', value: 935000 },
-      { month: 'Nov 2025', value: 948000 },
-      { month: 'Dec 2025', value: 960000 },
-      { month: 'Jan 2026', value: 955000 },
-      { month: 'Feb 2026', value: 968000 },
-      { month: 'Mar 2026', value: 975700 },
-    ],
+    wealthHistory: (() => {
+      // Generate ~10 years of monthly data ending Mar 2026.
+      // Strategy: anchor the last 7 known months, then extrapolate backward
+      // using ~9 % annualised growth + seeded deterministic noise so the
+      // history looks realistic but is reproducible across server restarts.
+      const known = [
+        { year: 2026, month: 2, value: 975700 }, // Mar 2026 (month index 0-based = 2)
+        { year: 2026, month: 1, value: 968000 },
+        { year: 2026, month: 0, value: 955000 },
+        { year: 2025, month: 11, value: 960000 },
+        { year: 2025, month: 10, value: 948000 },
+        { year: 2025, month: 9, value: 935000 },
+        { year: 2025, month: 8, value: 920000 },
+      ];
+      // Build a lookup for known months
+      const knownMap = {};
+      for (const k of known) knownMap[`${k.year}-${k.month}`] = k.value;
+
+      // Simple seeded pseudo-random for deterministic noise
+      let seed = 42;
+      const rand = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+
+      const monthlyGrowth = Math.pow(1.09, 1 / 12); // ~0.72 % / month
+      const endDate = new Date(2026, 2, 1);          // Mar 2026
+      const MONTHS_BACK = 120;                       // 10 years
+
+      const result = [];
+      for (let i = MONTHS_BACK; i >= 0; i--) {
+        const d = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        let value;
+        if (knownMap[key] !== undefined) {
+          value = knownMap[key];
+        } else {
+          // Extrapolate backward from 920 000 (Sep 2025, i = ~6 months from end)
+          const monthsFromStart = MONTHS_BACK - i;
+          const base = 420000 * Math.pow(monthlyGrowth, monthsFromStart);
+          // ±2 % deterministic noise
+          const noise = 1 + (rand() - 0.5) * 0.04;
+          value = Math.round(base * noise);
+        }
+        result.push({ month: d.toISOString().slice(0, 7), value });
+      }
+      return result;
+    })(),
   }
 };
+
+// ──────────────────────────────────────────────
+// Daily history generator (called per-request so it always uses today's date)
+// ──────────────────────────────────────────────
+
+/**
+ * Generates daily wealth values from the start of the previous calendar month
+ * up to and including today, by linearly interpolating between the surrounding
+ * monthly anchors in `monthlyHistory` and adding small deterministic per-day noise.
+ *
+ * @param {Array<{month: string, value: number}>} monthlyHistory  - e.g. [{month:'2026-03', value:975700}, ...]
+ * @returns {Array<{date: string, value: number}>}                - e.g. [{date:'2026-02-01', value:...}, ...]
+ */
+function generateDailyHistory(monthlyHistory) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Window: first day of previous calendar month → today
+  const windowStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  // Build a quick O(1) lookup: 'YYYY-MM' → value
+  const monthMap = {};
+  for (const h of monthlyHistory) monthMap[h.month] = h.value;
+
+  // Deterministic per-day noise (seed chosen to differ from monthly generator)
+  let seed = 137;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) & 0xffffffff;
+    return (seed >>> 0) / 0xffffffff;
+  };
+
+  const result = [];
+
+  // Iterate day by day from windowStart to today (inclusive)
+  for (let cur = new Date(windowStart); cur <= today; cur.setDate(cur.getDate() + 1)) {
+    const year  = cur.getFullYear();
+    const month = cur.getMonth();   // 0-based
+    const day   = cur.getDate();
+
+    // Formatted month keys
+    const thisKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const nextYear  = month === 11 ? year + 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextKey = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}`;
+
+    const v0 = monthMap[thisKey];
+    if (v0 === undefined) continue; // no anchor — skip (shouldn't happen for recent months)
+
+    const v1 = monthMap[nextKey] ?? v0; // if next month unknown, hold flat
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // t = 0 at day-1, t = 1 at day-(daysInMonth+1) so end-of-month → v1
+    const t     = (day - 1) / daysInMonth;
+    const base  = v0 + (v1 - v0) * t;
+
+    // ±0.3 % noise so the line has realistic micro-fluctuation
+    const noise = 1 + (rand() - 0.5) * 0.006;
+    const value = Math.round(base * noise);
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    result.push({ date: dateStr, value });
+  }
+
+  return result;
+}
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -326,10 +589,16 @@ function generateInsights(assets) {
   const cryptoVal = types['Crypto'] || 0;
   if (cryptoVal > 0) {
     const cryptoPct = ((cryptoVal / total) * 100).toFixed(1);
+    const drawdown = Math.round(cryptoVal * 0.5);
     insights.push({
       id: 'ins_1', type: 'warning', priority: 'high', category: 'Risk',
+      titleKey: 'insights.cards.ins_crypto.title',
+      summaryKey: 'insights.cards.ins_crypto.summary',
+      summaryParams: { cryptoPct, drawdown: drawdown.toLocaleString() },
+      actionKey: 'insights.cards.ins_crypto.action',
+      actionParams: {},
       title: 'Crypto Volatility Exposure',
-      summary: `Your crypto allocation (${cryptoPct}%) carries high volatility. A 50% drawdown would reduce your net worth by $${Math.round(cryptoVal * 0.5).toLocaleString()}.`,
+      summary: `Your crypto allocation (${cryptoPct}%) carries high volatility. A 50% drawdown would reduce your net worth by $${drawdown.toLocaleString()}.`,
       action: 'Consider setting a mental stop-loss level or rebalancing 30% of crypto holdings into fixed income instruments like SSBs or T-bills.',
     });
   }
@@ -338,10 +607,16 @@ function generateInsights(assets) {
   const srsAsset = assets.find(a => a.name.includes('SRS'));
   if (srsAsset && srsAsset.value < 15300) {
     const gap = 15300 - srsAsset.value;
+    const taxSaving = Math.round(gap * 0.07);
     insights.push({
       id: 'ins_2', type: 'opportunity', priority: 'high', category: 'Tax',
+      titleKey: 'insights.cards.ins_srs.title',
+      summaryKey: 'insights.cards.ins_srs.summary',
+      summaryParams: { gap: gap.toLocaleString(), taxSaving: taxSaving.toLocaleString() },
+      actionKey: 'insights.cards.ins_srs.action',
+      actionParams: { gap: gap.toLocaleString() },
       title: 'SRS Top-Up Tax Savings Available',
-      summary: `You're $${gap.toLocaleString()} below the SRS contribution cap. Topping up could save you up to $${Math.round(gap * 0.07).toLocaleString()} in taxes (at 7% marginal rate).`,
+      summary: `You're $${gap.toLocaleString()} below the SRS contribution cap. Topping up could save you up to $${taxSaving.toLocaleString()} in taxes (at 7% marginal rate).`,
       action: `Transfer $${gap.toLocaleString()} to your SRS account before December 31st to maximize tax relief.`,
     });
   }
@@ -353,6 +628,11 @@ function generateInsights(assets) {
     const excess = Math.round(cashTotal - 54000);
     insights.push({
       id: 'ins_3', type: 'positive', priority: 'medium', category: 'Liquidity',
+      titleKey: 'insights.cards.ins_emergency.title',
+      summaryKey: 'insights.cards.ins_emergency.summary',
+      summaryParams: { months: monthsCoverage.toFixed(1), excess: excess.toLocaleString() },
+      actionKey: 'insights.cards.ins_emergency.action',
+      actionParams: { excess: excess.toLocaleString() },
       title: 'Strong Emergency Fund',
       summary: `Your cash holdings cover ${monthsCoverage.toFixed(1)} months of estimated expenses, exceeding the recommended 6-month buffer by $${excess.toLocaleString()}.`,
       action: `Consider redirecting the excess $${excess.toLocaleString()} into higher-yield instruments like T-bills (3.5%+) or Singapore Savings Bonds.`,
@@ -363,10 +643,16 @@ function generateInsights(assets) {
   const vehicle = assets.find(a => a.type === 'Vehicle');
   if (vehicle && vehicle.change < 0) {
     const annualLoss = Math.round(vehicle.value * Math.abs(vehicle.change));
+    const pct = (Math.abs(vehicle.change) * 100).toFixed(0);
     insights.push({
       id: 'ins_4', type: 'warning', priority: 'medium', category: 'Planning',
+      titleKey: 'insights.cards.ins_vehicle.title',
+      summaryKey: 'insights.cards.ins_vehicle.summary',
+      summaryParams: { pct, annualLoss: annualLoss.toLocaleString() },
+      actionKey: 'insights.cards.ins_vehicle.action',
+      actionParams: {},
       title: 'Vehicle Depreciation Impact',
-      summary: `Your car is depreciating at ~${(Math.abs(vehicle.change) * 100).toFixed(0)}% annually, reducing net wealth by ~$${annualLoss.toLocaleString()}/year.`,
+      summary: `Your car is depreciating at ~${pct}% annually, reducing net wealth by ~$${annualLoss.toLocaleString()}/year.`,
       action: 'Factor COE renewal timeline into your financial plan. Consider if replacement vs public transport is more cost-effective long-term.',
     });
   }
@@ -375,10 +661,17 @@ function generateInsights(assets) {
   const stiAsset = assets.find(a => a.name.includes('STI'));
   const spAsset = assets.find(a => a.name.includes('S&P'));
   if (stiAsset && spAsset && stiAsset.change < 0 && spAsset.change > 0) {
+    const stiPct = (stiAsset.change * 100).toFixed(1);
+    const spPct = (spAsset.change * 100).toFixed(1);
     insights.push({
       id: 'ins_5', type: 'opportunity', priority: 'medium', category: 'Growth',
+      titleKey: 'insights.cards.ins_equity.title',
+      summaryKey: 'insights.cards.ins_equity.summary',
+      summaryParams: { stiPct, spPct },
+      actionKey: 'insights.cards.ins_equity.action',
+      actionParams: {},
       title: 'Rebalance Equity Allocation',
-      summary: `Your Singapore equities (${(stiAsset.change * 100).toFixed(1)}%) have underperformed relative to US equities (+${(spAsset.change * 100).toFixed(1)}%). Consider geographic diversification.`,
+      summary: `Your Singapore equities (${stiPct}%) have underperformed relative to US equities (+${spPct}%). Consider geographic diversification.`,
       action: 'Review adding a global emerging markets ETF or increasing allocation to outperforming regions to reduce single-market risk.',
     });
   }
@@ -390,6 +683,11 @@ function generateInsights(assets) {
     const cpfTotal = cpfOA.value + cpfSA.value;
     insights.push({
       id: 'ins_6', type: 'positive', priority: 'low', category: 'Retirement',
+      titleKey: 'insights.cards.ins_cpf.title',
+      summaryKey: 'insights.cards.ins_cpf.summary',
+      summaryParams: { cpfTotal: cpfTotal.toLocaleString() },
+      actionKey: 'insights.cards.ins_cpf.action',
+      actionParams: {},
       title: 'CPF Balances On Track',
       summary: `Your combined CPF balance of $${cpfTotal.toLocaleString()} is growing steadily. At current contribution rates, you're projected to meet the Basic Retirement Sum by age 55.`,
       action: 'Continue current contributions. Consider voluntary top-ups to SA for guaranteed 4% returns — one of the best risk-free rates available.',
@@ -402,6 +700,11 @@ function generateInsights(assets) {
   if (propertyPct > 50) {
     insights.push({
       id: 'ins_7', type: 'warning', priority: 'low', category: 'Diversification',
+      titleKey: 'insights.cards.ins_property.title',
+      summaryKey: 'insights.cards.ins_property.summary',
+      summaryParams: { propertyPct: propertyPct.toFixed(1) },
+      actionKey: 'insights.cards.ins_property.action',
+      actionParams: {},
       title: 'High Property Concentration',
       summary: `Property makes up ${propertyPct.toFixed(1)}% of your net worth. While common in Singapore, this creates concentration risk if the property market corrects.`,
       action: 'No immediate action needed, but gradually build up financial assets (equities, bonds) to reduce property concentration over time.',
@@ -536,6 +839,7 @@ app.get('/api/portfolio', authenticate, (req, res) => {
     liquidAssets,
     allocation: Object.values(allocation),
     wealthHistory: portfolio.wealthHistory,
+    dailyHistory: generateDailyHistory(portfolio.wealthHistory),
     monthlyChange: { amount: 15700, percent: 1.6 },
     portfolioRisk: { score: Math.round(weightedRisk * 10) / 10, label: weightedRisk < 1.5 ? 'Conservative' : weightedRisk < 2.5 ? 'Moderate' : weightedRisk < 3.5 ? 'Growth' : 'Aggressive' },
   });
@@ -1038,6 +1342,7 @@ const goals = {
   'usr_001': [
     {
       id: 'goal_1',
+      titleKey: 'goal_emergency_fund',
       title: 'Emergency Fund',
       description: 'Build 6 months of expenses',
       targetAmount: 54000,
@@ -1048,6 +1353,7 @@ const goals = {
     },
     {
       id: 'goal_2',
+      titleKey: 'goal_max_srs',
       title: 'Max Out SRS',
       description: 'Contribute full $15,300 to SRS for tax savings',
       targetAmount: 15300,
@@ -1058,6 +1364,7 @@ const goals = {
     },
     {
       id: 'goal_3',
+      titleKey: 'goal_investment_200k',
       title: 'Investment Portfolio $200K',
       description: 'Grow liquid investments to $200K',
       targetAmount: 200000,
@@ -1245,13 +1552,17 @@ app.put('/api/email-preferences', authenticate, (req, res) => {
 app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
   const prefs = emailPreferences[req.userId] || { email: req.user.email };
   const recipientEmail = req.body.email || prefs.email;
+
+  // Pick the language the user had active when they clicked Send — fall back to 'en'
+  const lang = (req.body.lang && EMAIL_TR[req.body.lang]) ? req.body.lang : 'en';
+  const tr = EMAIL_TR[lang];
+
   const portfolio = portfolios[req.userId];
   const totalWealth = portfolio.assets.reduce((s, a) => s + a.value, 0);
-  const liquidAssets = portfolio.assets.filter(a => !['Property', 'Vehicle'].includes(a.type)).reduce((s, a) => s + a.value, 0);
   const wellnessScore = computeWellnessScore(portfolio.assets, req.userId);
   const insightsData = generateInsights(portfolio.assets);
 
-  // Build asset allocation summary
+  // Build asset allocation summary — type names and risk levels use the translation table
   const types = {};
   portfolio.assets.forEach(a => { types[a.type] = (types[a.type] || 0) + a.value; });
   const allocationRows = Object.entries(types)
@@ -1259,31 +1570,47 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
     .map(([type, value]) => {
       const pct = ((value / totalWealth) * 100).toFixed(1);
       const risk = RISK_DATABASE._typeDefaults[type] || {};
-      return `<tr><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9">${type}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9;text-align:right">$${value.toLocaleString()}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#94A3B8;text-align:right">${pct}%</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B"><span style="color:${risk.color || '#94A3B8'};font-weight:600">${risk.riskLevel || 'N/A'}</span></td></tr>`;
+      const translatedType = tr.assetTypes[type] || type;
+      const translatedRisk = (risk.riskLevel && tr.riskLevel[risk.riskLevel]) ? tr.riskLevel[risk.riskLevel] : (risk.riskLevel || 'N/A');
+      return `<tr><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9">${translatedType}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#F1F5F9;text-align:right">$${value.toLocaleString()}</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B;color:#94A3B8;text-align:right">${pct}%</td><td style="padding:10px 16px;border-bottom:1px solid #1E293B"><span style="color:${risk.color || '#94A3B8'};font-weight:600">${translatedRisk}</span></td></tr>`;
     }).join('');
 
-  // Build insights section
+  // Build insights section — resolve title/summary from EMAIL_TR using titleKey + summaryParams
   const insightRows = insightsData.slice(0, 5).map(i => {
-    const icon = i.type === 'warning' ? '⚠️' : i.type === 'opportunity' ? '💡' : '✅';
+    const icon  = i.type === 'warning' ? '⚠️' : i.type === 'opportunity' ? '💡' : '✅';
     const color = i.type === 'warning' ? '#F59E0B' : i.type === 'opportunity' ? '#0EA5E9' : '#10B981';
-    return `<div style="padding:14px 16px;border-left:3px solid ${color};background:#1A2332;border-radius:0 8px 8px 0;margin-bottom:8px"><div style="font-weight:600;color:#F1F5F9;margin-bottom:4px">${icon} ${i.title}</div><div style="font-size:13px;color:#94A3B8;line-height:1.5">${i.summary}</div></div>`;
+    // Derive the insightCards key from titleKey (e.g. 'insights.cards.ins_crypto.title' → 'ins_crypto')
+    const cardKey = i.titleKey ? i.titleKey.split('.')[2] : null;
+    const card    = cardKey && tr.insightCards ? tr.insightCards[cardKey] : null;
+    const title   = card ? card.title : i.title;
+    // Interpolate summaryParams into the translated summary template using {param} tokens
+    let summary = card ? card.summary : i.summary;
+    if (card && i.summaryParams) {
+      Object.entries(i.summaryParams).forEach(([k, v]) => {
+        summary = summary.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+      });
+    }
+    return `<div style="padding:14px 16px;border-left:3px solid ${color};background:#1A2332;border-radius:0 8px 8px 0;margin-bottom:8px"><div style="font-weight:600;color:#F1F5F9;margin-bottom:4px">${icon} ${title}</div><div style="font-size:13px;color:#94A3B8;line-height:1.5">${summary}</div></div>`;
   }).join('');
 
-  // Wellness metrics bars
+  // Wellness metrics — metric names translated via tr.metrics
   const metricsRows = wellnessScore.metrics.map(m => {
     const color = m.score >= 75 ? '#10B981' : m.score >= 50 ? '#F59E0B' : '#EF4444';
-    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#F1F5F9;font-size:13px">${m.metric}</span><span style="color:${color};font-weight:700;font-size:13px">${m.score}/100</span></div><div style="width:100%;height:6px;border-radius:3px;background:#243044"><div style="width:${m.score}%;height:100%;border-radius:3px;background:${color}"></div></div></div>`;
+    const label = tr.metrics[m.metric] || m.metric;
+    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#F1F5F9;font-size:13px">${label}</span><span style="color:${color};font-weight:700;font-size:13px">${m.score}/100</span></div><div style="width:100%;height:6px;border-radius:3px;background:#243044"><div style="width:${m.score}%;height:100%;border-radius:3px;background:${color}"></div></div></div>`;
   }).join('');
 
   const scoreColor = wellnessScore.overall >= 75 ? '#10B981' : wellnessScore.overall >= 50 ? '#F59E0B' : '#EF4444';
-  const reportDate = new Date().toLocaleDateString('en-SG', { year: 'numeric', month: 'long', day: 'numeric' });
+  const scoreLabel = wellnessScore.overall >= 75 ? tr.excellent : wellnessScore.overall >= 50 ? tr.good : tr.needsAttention;
+  const reportDate = new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : lang === 'hi' ? 'hi-IN' : lang === 'es' ? 'es-ES' : lang === 'fr' ? 'fr-FR' : 'en-SG', { year: 'numeric', month: 'long', day: 'numeric' });
+  const emailSubject = tr.subject.replace('{date}', reportDate);
 
   const htmlEmail = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#0B1120;font-family:'Segoe UI',Helvetica,Arial,sans-serif">
 <div style="max-width:600px;margin:0 auto;padding:20px">
   <!-- Header -->
   <div style="text-align:center;padding:32px 20px;background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(99,102,241,0.15));border-radius:16px 16px 0 0">
     <div style="display:inline-block;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0EA5E9,#6366F1);line-height:44px;text-align:center;font-size:22px;color:white;font-weight:700">W</div>
-    <h1 style="color:#F1F5F9;font-size:22px;margin:12px 0 4px;font-weight:700">WealthWell Monthly Report</h1>
+    <h1 style="color:#F1F5F9;font-size:22px;margin:12px 0 4px;font-weight:700">${tr.reportTitle}</h1>
     <p style="color:#94A3B8;font-size:14px;margin:0">${reportDate}</p>
   </div>
 
@@ -1291,34 +1618,34 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
   <div style="background:#111827;padding:28px 24px;border-left:1px solid rgba(148,163,184,0.1);border-right:1px solid rgba(148,163,184,0.1)">
     <div style="display:flex;text-align:center">
       <div style="flex:1">
-        <div style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Total Net Worth</div>
+        <div style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${tr.totalNetWorth}</div>
         <div style="color:#F1F5F9;font-size:28px;font-weight:700">$${totalWealth.toLocaleString()}</div>
-        <div style="color:#10B981;font-size:13px;margin-top:4px">▲ +1.6% this month</div>
+        <div style="color:#10B981;font-size:13px;margin-top:4px">${tr.monthlyChange}</div>
       </div>
       <div style="width:1px;background:rgba(148,163,184,0.15);margin:0 20px"></div>
       <div style="flex:1">
-        <div style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Wellness Score</div>
+        <div style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${tr.wellnessScore}</div>
         <div style="color:${scoreColor};font-size:28px;font-weight:700">${wellnessScore.overall}/100</div>
-        <div style="color:#94A3B8;font-size:13px;margin-top:4px">${wellnessScore.overall >= 75 ? 'Excellent' : wellnessScore.overall >= 50 ? 'Good' : 'Needs Attention'}</div>
+        <div style="color:#94A3B8;font-size:13px;margin-top:4px">${scoreLabel}</div>
       </div>
     </div>
   </div>
 
   <!-- Wellness Metrics -->
   <div style="background:#111827;padding:24px;border-left:1px solid rgba(148,163,184,0.1);border-right:1px solid rgba(148,163,184,0.1)">
-    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">Wellness Breakdown</h2>
+    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">${tr.wellnessBreakdown}</h2>
     ${metricsRows}
   </div>
 
   <!-- Asset Allocation -->
   <div style="background:#111827;padding:24px;border-left:1px solid rgba(148,163,184,0.1);border-right:1px solid rgba(148,163,184,0.1)">
-    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">Asset Allocation</h2>
+    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">${tr.assetAllocation}</h2>
     <table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid #243044">
-        <th style="padding:8px 16px;text-align:left;color:#64748B;font-weight:500">Type</th>
-        <th style="padding:8px 16px;text-align:right;color:#64748B;font-weight:500">Value</th>
-        <th style="padding:8px 16px;text-align:right;color:#64748B;font-weight:500">Weight</th>
-        <th style="padding:8px 16px;text-align:left;color:#64748B;font-weight:500">Risk</th>
+        <th style="padding:8px 16px;text-align:left;color:#64748B;font-weight:500">${tr.colType}</th>
+        <th style="padding:8px 16px;text-align:right;color:#64748B;font-weight:500">${tr.colValue}</th>
+        <th style="padding:8px 16px;text-align:right;color:#64748B;font-weight:500">${tr.colWeight}</th>
+        <th style="padding:8px 16px;text-align:left;color:#64748B;font-weight:500">${tr.colRisk}</th>
       </tr></thead>
       <tbody>${allocationRows}</tbody>
     </table>
@@ -1326,13 +1653,13 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
 
   <!-- Insights -->
   <div style="background:#111827;padding:24px;border-left:1px solid rgba(148,163,184,0.1);border-right:1px solid rgba(148,163,184,0.1)">
-    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">Key Insights</h2>
+    <h2 style="color:#F1F5F9;font-size:16px;font-weight:600;margin:0 0 16px">${tr.keyInsights}</h2>
     ${insightRows}
   </div>
 
   <!-- Footer -->
   <div style="background:#111827;padding:24px;text-align:center;border-radius:0 0 16px 16px;border:1px solid rgba(148,163,184,0.1);border-top:none">
-    <p style="color:#64748B;font-size:12px;margin:0">This report is for informational purposes only and does not constitute financial advice.</p>
+    <p style="color:#64748B;font-size:12px;margin:0">${tr.disclaimer}</p>
     <p style="color:#64748B;font-size:12px;margin:8px 0 0">© ${new Date().getFullYear()} WealthWell · <a href="#" style="color:#0EA5E9">Manage Preferences</a></p>
   </div>
 </div></body></html>`;
@@ -1347,15 +1674,14 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
     // No SMTP configured — log the email and return success for demo
     console.log(`\n📧 EMAIL REPORT (no SMTP configured — showing preview)`);
     console.log(`   To: ${recipientEmail}`);
-    console.log(`   Subject: WealthWell Monthly Report — ${reportDate}`);
-    console.log(`   Net Worth: $${totalWealth.toLocaleString()}, Wellness: ${wellnessScore.overall}/100\n`);
+    console.log(`   Subject: ${emailSubject}`);
+    console.log(`   Lang: ${lang} | Net Worth: $${totalWealth.toLocaleString()}, Wellness: ${wellnessScore.overall}/100\n`);
 
     if (emailPreferences[req.userId]) {
       emailPreferences[req.userId].lastSent = new Date().toISOString().split('T')[0];
     }
     return res.json({
       success: true,
-      message: `Report preview logged (set SMTP_USER & SMTP_PASS to send real emails). To: ${recipientEmail}`,
       sentAt: new Date().toISOString(),
     });
   }
@@ -1371,11 +1697,11 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
     await transporter.sendMail({
       from: `"WealthWell" <${smtpUser}>`,
       to: recipientEmail,
-      subject: `WealthWell Monthly Report — ${reportDate}`,
+      subject: emailSubject,
       html: htmlEmail,
     });
 
-    console.log(`📧 Report sent to ${recipientEmail}`);
+    console.log(`📧 Report sent to ${recipientEmail} (${lang})`);
 
     if (emailPreferences[req.userId]) {
       emailPreferences[req.userId].lastSent = new Date().toISOString().split('T')[0];
@@ -1383,7 +1709,6 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Report sent to ${recipientEmail}`,
       sentAt: new Date().toISOString(),
     });
   } catch (err) {
@@ -1450,6 +1775,15 @@ app.get('/api/health', (req, res) => {
 // ──────────────────────────────────────────────
 
 const PORT = process.env.PORT || 3001;
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname_patch, '..', 'dist');
+  app.use(express.static(distPath));
+
+  // Catch-all: serve index.html for any route not matched by the API
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 app.listen(PORT, () => {
   console.log(`\n  🟢 WealthWell API server running on http://localhost:${PORT}`);
   console.log(`  📋 Endpoints:`);
