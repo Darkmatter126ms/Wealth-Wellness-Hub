@@ -66,7 +66,7 @@ Current solutions serve either institutional advisers or basic retail budgeters 
 
 WealthWell monetises through a freemium subscription model: Lite for free, Pro at $9.90, Family at $19.90 per month. Low friction to acquire, recurring revenue to scale.
 
-To take a step further towards global use of this app, we do not want to introduce languages available based on recognised languages in Singapore as most Fintech apps in Singapore is in English and sometimes offer an option in Chinese. Hence together with English and Chinese, we also offer the app in Hindi, Spanish and French to penetrate markets in Europe, Africa, and the Americas as these languages are the five most commonly spoken ones aimed reach out to roughly over 3.4 billion people over the world, removing the language barrier for about 2 in 5 people.
+To take a step further towards global use of this app, we do not want to introduce languages available based on recognised languages in Singapore as most Fintech apps in Singapore is in English and sometimes offer an option in Chinese. Hence together with English and Chinese, we also offer the app in Hindi, Spanish and French to penetrate markets in Europe, Africa, and the Americas as these languages are the five most commonly spoken ones aimed to reach out to roughly over 3.4 billion people over the world, removing the language barrier for about 2 in 5 people.
 
 ---
 
