@@ -40,7 +40,7 @@ This is the unified wallet the problem statement asked for. Built and working.
 
 Now here's what makes WealthWell different from any portfolio tracker. We don't just show you numbers, we tell you what they mean.
 
-The **Financial Wellness Score** rates your overall financial health from 0 to 100, broken down across six dimensions: diversification, liquidity, growth, risk management, tax efficiency, and emergency fund readiness.
+The **Financial Wellness Score** rates your overall financial health from 0 to 100, broken down across seven dimensions: diversification, liquidity, growth, risk management, tax efficiency, emergency fund readiness and behavioral resilience.
 
 That radar chart gives you an honest picture of where you are strong and where you are exposed at a glance.
 
