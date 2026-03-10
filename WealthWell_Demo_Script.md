@@ -33,7 +33,7 @@ This is the unified wallet the problem statement asked for. Built and working.
 
 ---
 
-## [WELLNESS SCORE — 1:40–2:15]
+## [WELLNESS SCORE & Email — 1:40–2:15]
 *[Screen: Wellness Score section → radar chart]*
 
 Now here's what makes WealthWell different from any portfolio tracker. We don't just show you numbers, we tell you what they mean.
@@ -41,6 +41,8 @@ Now here's what makes WealthWell different from any portfolio tracker. We don't 
 The **Financial Wellness Score** rates your overall financial health from 0 to 100, broken down across six dimensions: diversification, liquidity, growth, risk management, tax efficiency, and emergency fund readiness.
 
 That radar chart gives you an honest picture of where you are strong and where you are exposed at a glance.
+
+Want to receive a summarised report instantly? Go to Export, key in your email, and you will receive a summary report in your email.
 
 ---
 
