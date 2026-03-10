@@ -16,7 +16,7 @@ That's the problem we set out to solve. This is **WealthWell** — a Wealth Well
 
 Let us show you the app. If you key in the wrong password, you will be denied. Afterwards, you log in with your credentials, and WealthWell immediately prompts a two-factor authentication step, because when we're talking about someone's entire financial life, security isn't optional, but mandatory.
 
-Once you're in, you will be prompted to answer a set of questions to determine your risk profile, and based on what you answer, you will be given a risk-class and this actually would affect how your wellness score is calculated. For example, if you are deemed as Conservative, more weights will be allocated to liquidity and emergency funds when calculating the score, as we recognise there is no one-size-fits-all way in determining a score that is already ambiguous to quantify in the first place.
+Once you're in, you will be prompted to answer a set of questions to determine your risk profile, and based on what you answer, you will be given a risk-class. We personalise your financial wellness score using a dynamic risk profile, because financial health isn’t one-size-fits-all.
 
 Afterwards, users will be prompt to give feedback on the app for every 10 logins, and for first-time users, there will be a quick walkthrough to use the app, especially features that we think users may miss.
 
