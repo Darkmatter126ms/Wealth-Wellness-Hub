@@ -259,6 +259,7 @@ const LANGUAGES = [
 
 /* ─────────── CURRENCY SELECTOR (header dropdown) ─────────── */
 const CurrencySelector = ({ displayCurrency, setDisplayCurrency, fxLastUpdated }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const cur = CURRENCIES[displayCurrency] ?? CURRENCIES.SGD;
@@ -273,7 +274,7 @@ const CurrencySelector = ({ displayCurrency, setDisplayCurrency, fxLastUpdated }
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(!open)}
-        title="Display currency"
+        title={t('settings.displayCurrencyLabel')}
         style={{
           background: open ? 'rgba(14,165,233,0.1)' : 'var(--bg-elevated)',
           border: `1px solid ${open ? 'var(--accent-teal)' : 'var(--border)'}`,
@@ -292,7 +293,7 @@ const CurrencySelector = ({ displayCurrency, setDisplayCurrency, fxLastUpdated }
       {open && (
         <div className="currency-dropdown animate-in">
           <div style={{ padding: '4px 10px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>
-            Display Currency
+            {t('settings.displayCurrencyLabel')}
           </div>
           {Object.entries(CURRENCIES).map(([code, c]) => (
             <button
@@ -304,11 +305,11 @@ const CurrencySelector = ({ displayCurrency, setDisplayCurrency, fxLastUpdated }
               <span style={{ fontSize: 18 }}>{c.flag}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{code}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{c.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{t(`currencies.${code}`)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {code !== 'SGD' ? `1 ${code} = S$${(FX_TO_SGD[code] ?? 1).toFixed(4)}` : 'Base'}
+                  {code !== 'SGD' ? `1 ${code} = S$${(FX_TO_SGD[code] ?? 1).toFixed(4)}` : t('settings.baseCurrency')}
                 </div>
               </div>
               {displayCurrency === code && <CheckCircle size={14} color="var(--accent-teal)" />}
@@ -317,7 +318,9 @@ const CurrencySelector = ({ displayCurrency, setDisplayCurrency, fxLastUpdated }
           <div style={{ margin: '4px 10px 2px', paddingTop: 6, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: fxLastUpdated ? 'var(--accent-green)' : 'var(--accent-gold)', flexShrink: 0 }} />
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              {fxLastUpdated ? `Live rates · ${new Date(fxLastUpdated).toLocaleTimeString()}` : 'Fallback rates · not yet refreshed'}
+              {fxLastUpdated
+                ? t('settings.liveRatesFooter', { time: new Date(fxLastUpdated).toLocaleTimeString() })
+                : t('settings.fallbackRatesFooter')}
             </div>
           </div>
         </div>
@@ -2206,9 +2209,9 @@ const SecuritySettings = () => {
   };
 
   const securityItems = [
-    { icon: <ShieldCheck size={20} color="var(--accent-green)" />, title: t("login.twoFactorAuth"), sub: "Enabled (Microsoft Authenticator)", btn: "Configure" },
-    { icon: <Eye size={20} color="var(--accent-purple)" />, title: "Data Access", sub: "Read-only connections · AES-256 encryption", btn: "View Audit Log" },
-    { icon: <Smartphone size={20} color="var(--accent-gold)" />, title: "Active Sessions", sub: "2 devices active", btn: "Manage" },
+    { icon: <ShieldCheck size={20} color="var(--accent-green)" />, title: t("login.twoFactorAuth"), sub: t("settings.twoFactorAuthDesc"), btn: t("settings.configure") },
+    { icon: <Eye size={20} color="var(--accent-purple)" />, title: t("settings.dataAccess"), sub: t("settings.dataAccessDesc"), btn: t("settings.viewAuditLog") },
+    { icon: <Smartphone size={20} color="var(--accent-gold)" />, title: t("settings.activeSessions"), sub: t("settings.activeSessionsDesc"), btn: t("settings.manage") },
   ];
 
   return (
@@ -2589,7 +2592,7 @@ const SettingsView = ({ user, setUser, displayCurrency, setDisplayCurrency, fxLa
                 <span style={{ fontSize: 26 }}>{c.flag}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: displayCurrency === code ? "var(--accent-teal)" : "var(--text-primary)" }}>
-                    {code} — {c.name}
+                    {code} — {t(`currencies.${code}`)}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                     {t("settings.symbolLabel")}: {c.symbol} &nbsp;·&nbsp;
