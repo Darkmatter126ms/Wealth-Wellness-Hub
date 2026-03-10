@@ -362,7 +362,11 @@
     "fxLiveDisclaimer": "Tasas en tiempo real de exchangerate.host · Última actualización: {{date}}. Las tasas son solo para visualización; los cálculos financieros permanecen en SGD.",
     "fxFallbackDisclaimer": "No se pudo acceder a exchangerate.host — mostrando tasas de respaldo. Las tasas son solo para visualización.",
     "currencyChooseDesc": "Elige tu moneda de visualización preferida. Todos los totales y valores de activos se mostrarán en esta moneda.",
-    "symbolLabel": "Símbolo"
+    "symbolLabel": "Símbolo",
+    "twoFactorAuthDesc": "Habilitado (Microsoft Authenticator)",
+    "displayCurrencyLabel": "Moneda de Visualización",
+    "liveRatesFooter": "Tasas en vivo · {{time}}",
+    "fallbackRatesFooter": "Tasas de respaldo · aún no actualizadas"
   },
   "feedback": {
     "title": "Enviar Comentarios",
@@ -574,5 +578,12 @@
     "veryHigh": "Muy Alto",
     "depreciating": "En Depreciación",
     "unknown": "Desconocido"
+  },
+  "currencies": {
+    "SGD": "Dólar de Singapur",
+    "USD": "Dólar estadounidense",
+    "MYR": "Ringgit malayo",
+    "GBP": "Libra esterlina",
+    "EUR": "Euro"
   }
 }

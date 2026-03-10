@@ -362,7 +362,11 @@
     "fxLiveDisclaimer": "लाइव दरें exchangerate.host से प्राप्त, अंतिम अपडेट: {{date}}। दरें केवल प्रदर्शन के लिए हैं।",
     "fxFallbackDisclaimer": "exchangerate.host से कनेक्ट नहीं हो सका — बैकअप दरें दिखाई जा रही हैं।",
     "currencyChooseDesc": "अपनी पसंदीदा प्रदर्शन करेंसी चुनें। सभी कुल और संपत्ति मूल्य इसी करेंसी में दिखाए जाएंगे।",
-    "symbolLabel": "चिह्न"
+    "symbolLabel": "चिह्न",
+    "twoFactorAuthDesc": "सक्षम (Microsoft Authenticator)",
+    "displayCurrencyLabel": "प्रदर्शन मुद्रा",
+    "liveRatesFooter": "लाइव दरें · {{time}}",
+    "fallbackRatesFooter": "बैकअप दरें · अभी तक ताज़ा नहीं"
   },
   "feedback": {
     "title": "प्रतिक्रिया भेजें",
@@ -574,5 +578,12 @@
     "veryHigh": "बहुत अधिक",
     "depreciating": "मूल्यह्रास",
     "unknown": "अज्ञात"
+  },
+  "currencies": {
+    "SGD": "सिंगापुर डॉलर",
+    "USD": "अमेरिकी डॉलर",
+    "MYR": "मलेशियाई रिंगिट",
+    "GBP": "ब्रिटिश पाउंड",
+    "EUR": "यूरो"
   }
 }

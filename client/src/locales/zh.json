@@ -362,7 +362,11 @@
     "fxLiveDisclaimer": "实时汇率来源于 exchangerate.host，最后更新时间：{{date}}。汇率仅供展示，实际计算以 SGD 为准。",
     "fxFallbackDisclaimer": "无法连接 exchangerate.host，正在使用备用汇率。汇率仅供展示，实际计算以 SGD 为准。",
     "currencyChooseDesc": "请选择您希望的显示货币。全站所有总计和资产价值将按此货币显示。",
-    "symbolLabel": "符号"
+    "symbolLabel": "符号",
+    "twoFactorAuthDesc": "已启用（Microsoft Authenticator）",
+    "displayCurrencyLabel": "显示货币",
+    "liveRatesFooter": "实时汇率 · {{time}}",
+    "fallbackRatesFooter": "备用汇率 · 暂未刷新"
   },
   "feedback": {
     "title": "发送反馈",
@@ -574,5 +578,12 @@
     "veryHigh": "极高",
     "depreciating": "贬值中",
     "unknown": "未知"
+  },
+  "currencies": {
+    "SGD": "新加坡元",
+    "USD": "美元",
+    "MYR": "马来西亚林吉特",
+    "GBP": "英镑",
+    "EUR": "欧元"
   }
 }

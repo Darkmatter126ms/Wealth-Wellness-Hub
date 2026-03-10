@@ -362,7 +362,11 @@
     "fxLiveDisclaimer": "Taux en direct provenant d’exchangerate.host · Dernière mise à jour : {{date}}. Les taux sont uniquement indicatifs ; les calculs financiers restent en SGD.",
     "fxFallbackDisclaimer": "Impossible de joindre exchangerate.host — affichage des taux de secours. Les taux sont uniquement indicatifs.",
     "currencyChooseDesc": "Choisissez votre devise d’affichage préférée. Tous les totaux et valeurs d’actifs seront affichés dans cette devise.",
-    "symbolLabel": "Symbole"
+    "symbolLabel": "Symbole",
+    "twoFactorAuthDesc": "Activé (Microsoft Authenticator)",
+    "displayCurrencyLabel": "Devise d'affichage",
+    "liveRatesFooter": "Taux en direct · {{time}}",
+    "fallbackRatesFooter": "Taux de secours · pas encore actualisés"
   },
   "feedback": {
     "title": "Envoyer des Commentaires",
@@ -574,5 +578,12 @@
     "veryHigh": "Très Élevé",
     "depreciating": "En Dépréciation",
     "unknown": "Inconnu"
+  },
+  "currencies": {
+    "SGD": "Dollar de Singapour",
+    "USD": "Dollar américain",
+    "MYR": "Ringgit malaisien",
+    "GBP": "Livre sterling",
+    "EUR": "Euro"
   }
 }

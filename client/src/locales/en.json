@@ -362,7 +362,11 @@
     "fxLiveDisclaimer": "Live rates sourced from exchangerate.host · Last updated {{date}}. Rates are for display only; financial calculations remain in SGD on the server.",
     "fxFallbackDisclaimer": "Could not reach exchangerate.host — showing fallback rates. Rates are for display only; financial calculations remain in SGD on the server.",
     "currencyChooseDesc": "Choose your preferred display currency. All totals and asset values will be shown in this currency.",
-    "symbolLabel": "Symbol"
+    "symbolLabel": "Symbol",
+    "twoFactorAuthDesc": "Enabled (Microsoft Authenticator)",
+    "displayCurrencyLabel": "Display Currency",
+    "liveRatesFooter": "Live rates · {{time}}",
+    "fallbackRatesFooter": "Fallback rates · not yet refreshed"
   },
   "feedback": {
     "title": "Send Feedback",
@@ -574,5 +578,12 @@
     "veryHigh": "Very High",
     "depreciating": "Depreciating",
     "unknown": "Unknown"
+  },
+  "currencies": {
+    "SGD": "Singapore Dollar",
+    "USD": "US Dollar",
+    "MYR": "Malaysian Ringgit",
+    "GBP": "British Pound",
+    "EUR": "Euro"
   }
 }
