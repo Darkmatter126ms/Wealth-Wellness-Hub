@@ -5,7 +5,7 @@
 ## [INTRO — 0:00–0:25]
 *[On camera, confident, direct to lens]*
 
-Most people have no idea what their actual financial health looks like. Their CPF is in one app, their crypto on another, their investments somewhere else, and nobody's connecting the dots.
+[slide 1] Most people have no idea what their actual financial health looks like. [slide 2]Their CPF is in one app, their crypto on another, their investments somewhere else, and nobody's connecting the dots.
 
 Today there is **no single platform** that combines CPF, investments, crypto, and property into one unified financial intelligence system, with investors using 5-7 applications just to track all their finances.
 
@@ -53,7 +53,7 @@ Want to receive a summarised report instantly? Go to Export, key in your email, 
 
 WealthWell also generates **personalised insights** automatically. If your crypto allocation is too volatile, it flags it. If you're under your SRS contribution cap and leaving tax savings on the table, it tells you exactly how much you are missing.
 
-And if you want to go deeper, the **AI Coach** is right here, powered by a real LLM using Groq’s ultra-low latency inference with the Llama model. *[Type: "Should I top up my SRS this year?"]* — it responds with context-aware, personalised advice based on your actual portfolio.
+And if you want to go deeper, the **AI Coach** is right here, powered by a real LLM. *[Type: "Should I top up my SRS this year?"]* — it responds with context-aware, personalised advice based on your actual portfolio.
 
 On top of that, the **Scenario Simulator** lets you stress-test your wealth. What happens to your net worth if markets crash 30%? Now you know before it happens.
 
@@ -75,7 +75,7 @@ To take a step further towards global use of this app, we do not want to introdu
 ## [CLOSE — 3:45–4:10]
 *[On camera]*
 
-WealthWell is fully functional, containerised with Docker, it can be deployed within minutes. It supports five languages, and is built specifically around Singapore's financial ecosystem: CPF, SRS, HDB, COE.
+[slide 5] WealthWell is fully functional, containerised with Docker, it supports five languages, and is built specifically around Singapore's financial ecosystem: CPF, SRS, HDB, COE.
 
 We didn't build a mockup. We built a product.
 
