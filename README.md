@@ -156,6 +156,7 @@ wealthwell/
 │   └── index.js          ← Express API (auth, wellness engine, AI, email)
 └── client/
     ├── package.json      ← Frontend dependencies
+    ├── package-lock.json ← Locks dependencies versions
     ├── vite.config.js    ← Dev proxy + build config
     ├── index.html
     └── src/
