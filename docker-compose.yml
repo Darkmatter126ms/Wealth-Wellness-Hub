@@ -1,0 +1,19 @@
+
+
+services:
+  wealthwell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wealthwell-app
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env              # Loads SMTP_USER, SMTP_PASS, GROQ_API_KEY, PORT, NODE_ENV
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
