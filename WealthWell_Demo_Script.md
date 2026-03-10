@@ -7,7 +7,9 @@
 
 Most people have no idea what their actual financial health looks like. Their CPF is in one app, their crypto on another, their investments somewhere else, and nobody's connecting the dots.
 
-That's the problem we set out to solve. This is **WealthWell** — a Wealth Wellness Hub that gives you one complete, intelligent view of your total financial health.
+Today there is **no single platform** that combines CPF, investments, crypto, and property into one unified financial intelligence system, with investors using 5-7 applications just to track all their finances.
+
+That's the problem we set out to solve. This is **WealthWell** — your financial Fitbit that gives you one complete, intelligent view of your total financial health.
 
 ---
 
@@ -25,7 +27,7 @@ Afterwards, users will be prompt to give feedback on the app for every 10 logins
 ## [DASHBOARD & WEALTH WALLET — 0:50–1:40]
 *[Screen: dashboard overview → Wealth Wallet]*
 
-Right away, you can see your **total net worth** across every asset class. Cash, CPF, equities, REITs, crypto, property, even your car. This is your **Wealth Wallet**, a single, unified view that simply doesn't exist anywhere else in one place.
+For the first time, you can see your **entire financial life** in one place. Cash, CPF, equities, REITs, crypto, property, even your car. This is your **Wealth Wallet**, a single, unified view that simply doesn't exist anywhere else in one place.
 
 You can add assets in seconds. I'll add a quick equity holding here — *[demo adding asset]* — and the dashboard updates live. Allocation charts, net worth, everything recalculates instantly.
 
@@ -73,7 +75,7 @@ To take a step further towards global use of this app, we do not want to introdu
 ## [CLOSE — 3:45–4:10]
 *[On camera]*
 
-WealthWell is fully functional, containerised with Docker, supports five languages, and is built specifically around Singapore's financial ecosystem: CPF, SRS, HDB, COE.
+WealthWell is fully functional, containerised with Docker, it can be deployed within minutes. It supports five languages, and is built specifically around Singapore's financial ecosystem: CPF, SRS, HDB, COE.
 
 We didn't build a mockup. We built a product.
 
