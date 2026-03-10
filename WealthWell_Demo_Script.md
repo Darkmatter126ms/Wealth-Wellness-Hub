@@ -20,7 +20,7 @@ Let us show you the app. If you key in the wrong password, you will be denied. A
 
 Once you're in, you will be prompted to answer a set of questions to determine your risk profile, and based on what you answer, you will be given a risk-class. We personalise your financial wellness score using a dynamic risk profile, because financial health isn’t one-size-fits-all.
 
-Afterwards, users will be prompt to give feedback on the app for every 10 logins, and for first-time users, there will be a quick walkthrough to use the app, especially features that we think users may miss.
+Afterwards, users will be prompt to give feedback on the app for every 10 logins, and for first-time users, there will be a quick walkthrough to use the app, especially features that users may tend to miss.
 
 ---
 
