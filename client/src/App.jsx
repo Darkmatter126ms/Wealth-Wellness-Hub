@@ -1433,6 +1433,18 @@ const OnboardingPage = ({ onComplete }) => {
 };
 
 /* ─────────── DASHBOARD VIEW ─────────── */
+/* ─────────── ASSET TYPE → i18n key (mirrors assetTypes in locale files) ─────────── */
+const TYPE_I18N_KEY = {
+  'Cash':         'cash',
+  'Retirement':   'retirement',
+  'Equities':     'equities',
+  'REITs':        'reits',
+  'Fixed Income': 'fixedIncome',
+  'Crypto':       'crypto',
+  'Property':     'property',
+  'Vehicle':      'vehicle',
+};
+
 /* ─────────── LOCALE MAP for Intl.DateTimeFormat ─────────── */
 const LOCALE_MAP = { en: 'en-SG', zh: 'zh-CN', hi: 'hi-IN', es: 'es-ES', fr: 'fr-FR' };
 
@@ -1596,7 +1608,7 @@ const DashboardView = ({ portfolio, wellness, insights, onNavigate, user, displa
               </Pie>
               <Tooltip content={({ active, payload }) => active && payload?.[0] ? (
                 <div className="tooltip-custom" style={{ padding: "8px 12px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{payload[0].name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t(`assetTypes.${TYPE_I18N_KEY[payload[0].name] ?? payload[0].name}`)}</div>
                   <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     {formatFullCurrency(convertCurrency(payload[0].value, 'SGD', displayCurrency), displayCurrency)} ({((payload[0].value / portfolio.totalWealth) * 100).toFixed(1)}%)
                   </div>
@@ -1607,7 +1619,7 @@ const DashboardView = ({ portfolio, wellness, insights, onNavigate, user, displa
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
             {portfolio.allocation.slice(0, 6).map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-muted)" }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: a.color }} /> {a.name}
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: a.color }} /> {t(`assetTypes.${TYPE_I18N_KEY[a.name] ?? a.name}`)}
               </div>
             ))}
           </div>
