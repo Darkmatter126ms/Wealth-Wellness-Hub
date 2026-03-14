@@ -174,12 +174,12 @@ wealthwell/
 |---|---|
 | Auth | Login with 2FA, session tokens |
 | Portfolio | Wealth Wallet — add/delete assets (cash, CPF, equities, crypto, property, vehicle) |
-| Dashboard | Net worth tracking, wealth trends, allocation charts |
-| Wellness | Financial Wellness Score (0–100) across 6 sub-metrics |
+| Dashboard | Net worth tracking, wealth trends with range selector (1M/YTD/1Y/5Y/Max), allocation charts |
+| Wellness | Financial Wellness Score (0–100), 7-dimension CRRA-weighted score; HHI diversification; adjustable monthly expense assumption with profile-derived recommendation |
 | AI | AI Coach chat, 7 auto-generated insight types, scenario simulator |
 | Subscriptions | Lite / Pro / Family tiers with Stripe checkout (mock) |
 | Email | Scheduled multilingual monthly report emails |
-| i18n | Full UI in English, 中文, हिन्दी, Español, Français |
+| i18n | Full UI in English, 中文, हिन्दी, Español, Français including chart labels, tooltips, currency names, and date axes |
 
 ---
 
