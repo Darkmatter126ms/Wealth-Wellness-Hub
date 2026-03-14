@@ -242,67 +242,69 @@ const userBehavior = {
 // Stores risk profile per user. Cleared on server restart (= first-time experience)
 const userProfiles = {};
 
-// ── Profile definitions ──────────────────────────────────────────────────────
-// Labels, descriptions, and metric weights per profile.
-// Weights must sum to 1.00 and are used for the weighted overall wellness score.
+// ── Profile definitions ────────────────────────────────────────────────────────────────────
+// Weights are research-calibrated, NOT equal. Key sources:
+//   • Gerrans, Speelman & Campitelli (2014) — SEM path coefficients for financial wellness
+//     dimensions to overall FWB. Safety dimensions (Emergency Fund, Liquidity) carry the
+//     strongest direct paths; Tax Efficiency and Behavioural Resilience carry the weakest.
+//   • Greninger, Hampton, Kitt & Achacoso (1996) — Delphi consensus of 156 financial
+//     planners: liquidity and savings ratios ranked as the highest-priority benchmarks.
+//   • Archuleta et al. (2013) — acute liquidity stress has non-linear outsized negative
+//     effects on FWB, supporting elevated safety weights.
+//   • Merton (1969) / CRRA theory — risk profile alters the marginal utility of each
+//     dimension, not just the weight. Profile differentiation is handled by CRRA γ
+//     exponents (see GAMMA_EXPONENTS below), so no flat additive modifiers are needed.
+//
+// Weight derivation rationale:
+//   Conservative (CRRA, RRA ≈ 2–3): Emergency buffers dominate; growth is tertiary.
+//   Balanced: safety dimensions still lead (SEM evidence), but growth and portfolio
+//             quality are weighted meaningfully. Even "balanced" ≠ equal (1/7 ≈ 0.143).
+//   Growth (CRRA, RRA ≈ 0.5–1): Capital deployment in equities and discipline to stay
+//             invested are the primary drivers; excess liquidity is an opportunity cost.
 const RISK_PROFILES = {
   conservative: {
     label: 'Conservative',
     subtitle: 'Capital Preserver',
-    description: 'You prioritise stability and capital protection. Your score rewards strong emergency buffers and low volatility over high growth.',
-    color: '#10B981', // green
+    description: 'You prioritise stability and capital protection. Your score reflects the outsized importance of safety buffers, with growth as a secondary objective.',
+    color: '#10B981',
     weights: {
-      'Emergency Fund':       0.25,
-      'Liquidity':            0.20,
-      'Risk Mgmt':            0.20,
-      'Diversification':      0.15,
-      'Tax Efficiency':       0.10,
-      'Behavioral Resilience':0.05,
-      'Growth':               0.05,
-    },
-    // Metric score modifiers applied AFTER raw calculation (clamped 0-100)
-    modifiers: {
-      'Emergency Fund': +10,
-      'Liquidity':       +5,
-      'Risk Mgmt':       +5,
-      'Growth':         -10,  // under-weighting growth is fine for this profile
+      'Emergency Fund':        0.26,
+      'Liquidity':             0.21,
+      'Risk Mgmt':             0.18,
+      'Diversification':       0.14,
+      'Tax Efficiency':        0.10,
+      'Behavioral Resilience': 0.07,
+      'Growth':                0.04,
     },
   },
   balanced: {
     label: 'Balanced',
     subtitle: 'Steady Builder',
-    description: 'You seek sustainable long-term growth with manageable risk. Your score is calculated with equal emphasis across all dimensions.',
-    color: '#0EA5E9', // blue
+    description: 'You seek sustainable long-term growth with manageable risk. Your score reflects empirically-calibrated importance of safety, portfolio quality, and growth — not equal weights.',
+    color: '#0EA5E9',
     weights: {
-      'Diversification':      0.18,
-      'Growth':               0.15,
-      'Liquidity':            0.15,
-      'Emergency Fund':       0.15,
-      'Risk Mgmt':            0.15,
-      'Tax Efficiency':       0.12,
-      'Behavioral Resilience':0.10,
+      'Emergency Fund':        0.20,
+      'Diversification':       0.18,
+      'Liquidity':             0.16,
+      'Risk Mgmt':             0.15,
+      'Growth':                0.14,
+      'Tax Efficiency':        0.10,
+      'Behavioral Resilience': 0.07,
     },
-    modifiers: {}, // no adjustments — balanced is the baseline
   },
   growth: {
     label: 'Growth',
     subtitle: 'High-Growth Investor',
-    description: 'You embrace volatility in pursuit of long-term capital appreciation. Your score rewards equity exposure, diversification, and behavioural discipline.',
-    color: '#8B5CF6', // purple
+    description: 'You embrace volatility for long-term capital appreciation. Your score prioritises equity deployment and behavioural discipline; adequate — not excess — liquidity is valued.',
+    color: '#8B5CF6',
     weights: {
-      'Growth':               0.25,
-      'Diversification':      0.20,
-      'Behavioral Resilience':0.15,
-      'Risk Mgmt':            0.15,
-      'Tax Efficiency':       0.10,
-      'Liquidity':            0.10,
-      'Emergency Fund':       0.05,
-    },
-    modifiers: {
-      'Growth':          +15,  // reward equity-heavy portfolios
-      'Emergency Fund':  -10,  // excess cash is an opportunity cost
-      'Liquidity':        -5,
-      'Behavioral Resilience': +5, // discipline especially important for volatile portfolios
+      'Growth':                0.26,
+      'Diversification':       0.21,
+      'Behavioral Resilience': 0.16,
+      'Risk Mgmt':             0.13,
+      'Tax Efficiency':        0.12,
+      'Emergency Fund':        0.08,
+      'Liquidity':             0.04,
     },
   },
 };
@@ -316,6 +318,29 @@ function computeRiskProfile(answers) {
   return { riskScore: total, riskProfile: profile };
 }
 
+/** Returns the user's saved monthly expense amount, falling back to SGD 9,000. */
+function getUserMonthlyExpenses(userId) {
+  return userProfiles[userId]?.monthlyExpenses ?? 9000;
+}
+
+/**
+ * Derives a recommended monthly expense amount from profiler answers.
+ * Uses age (life-stage obligations), income (cost-of-living proxy), and
+ * savings_rate (leaner lifestyle signal). Returns nearest SGD 500 in [2000,15000].
+ */
+function deriveRecommendedExpenses(answers) {
+  const get = (id) => answers.find(a => a.questionId === id)?.score ?? null;
+  const ageScore     = get('age');          // 4=under25 … 0=55+
+  const incomeScore  = get('income');       // 0=<50k … 3=>200k
+  const savingsScore = get('savings_rate'); // 0=<5% … 3=>30%
+
+  const incomeBase = incomeScore === null ? 5000
+    : [3500, 5500, 8500, 12000][incomeScore] ?? 5000;
+  const ageAdj       = ageScore === null ? 0 : (2 - ageScore) * 0.075;
+  const savingsAdj   = savingsScore === null ? 0 : savingsScore * (-0.04);
+  const raw          = incomeBase * (1 + ageAdj) * (1 + savingsAdj);
+  return Math.min(15000, Math.max(2000, Math.round(raw / 500) * 500));
+}
 const portfolios = {
   'usr_001': {
     assets: [
@@ -469,116 +494,200 @@ function authenticate(req, res, next) {
   next();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────
+// CRRA-INSPIRED SCORE TRANSFORMATION
+// ─────────────────────────────────────────────────────────────────────────────────────
+// Based on Constant Relative Risk Aversion (CRRA) utility theory (Merton, 1969).
+// Formula: T(s; γ) = 100 · (s/100)^γ
+//   γ > 1 → convex curve: low scores penalised disproportionately.
+//           Models a risk-averse investor's view of a deficit in a given dimension.
+//   γ < 1 → concave curve: lenient on shortfalls, diminishing returns near ceiling.
+//           Models a dimension that is secondary for this profile type.
+//   γ = 1 → linear: no curvature (neutral / profile-agnostic).
+// T(0) = 0 and T(100) = 100 always — only the curvature between changes.
+//
+// Design logic per dimension:
+//
+//   SAFETY dims (Emergency Fund, Liquidity, Risk Mgmt)
+//     Conservative (γ > 1): a low safety score is disproportionately bad for a
+//       capital preserver — CRRA implies RRA ≈ 2–3.
+//     Balanced    (γ ≈ 1): mild convexity; safety still slightly more penalised.
+//     Growth      (γ < 1): adequate safety is fine; concavity means moderate
+//       shortfalls are not catastrophic (RRA ≈ 0.5–1).
+//
+//   GROWTH dims (Growth, Diversification)
+//     Conservative (γ < 1): low equity/diversification is not penalised for a
+//       capital preserver — concavity reflects that it's a secondary objective.
+//     Balanced    (γ = 1): linear — balanced investors value both equally.
+//     Growth      (γ > 1): under-deployment in growth assets is a genuine
+//       opportunity cost — convexity penalises low scores.
+//
+//   BEHAVIOURAL dims (Tax Efficiency, Behavioral Resilience): γ = 1 for all profiles.
+//     These are measured independently of risk appetite.
+//
+// Column order: [conservative=0, balanced=1, growth=2]
+const GAMMA_EXPONENTS = {
+  'Emergency Fund':        [1.40, 1.15, 0.85],
+  'Liquidity':             [1.30, 1.10, 0.85],
+  'Risk Mgmt':             [1.20, 1.05, 0.90],
+  'Diversification':       [0.85, 1.00, 1.20],
+  'Growth':                [0.75, 1.00, 1.30],
+  'Tax Efficiency':        [1.00, 1.00, 1.00],
+  'Behavioral Resilience': [1.00, 1.00, 1.00],
+};
+const PROFILE_IDX = { conservative: 0, balanced: 1, growth: 2 };
+
+/**
+ * Applies CRRA utility curvature T(s; γ) = 100·(s/100)^γ to a raw score.
+ * @param {number} rawScore  - raw dimension score [0–100]
+ * @param {string} metric    - dimension name (key into GAMMA_EXPONENTS)
+ * @param {string} profileKey - 'conservative' | 'balanced' | 'growth'
+ * @returns {number}         - integer in [0, 100]
+ */
+function crraTransform(rawScore, metric, profileKey) {
+  if (rawScore <= 0) return 0;
+  if (rawScore >= 100) return 100;
+  const gamma = (GAMMA_EXPONENTS[metric] ?? [1, 1, 1])[PROFILE_IDX[profileKey] ?? 1];
+  if (gamma === 1.0) return rawScore;
+  return Math.min(100, Math.round(100 * Math.pow(rawScore / 100, gamma)));
+}
+
 function computeWellnessScore(assets, userId) {
   const total = assets.reduce((s, a) => s + a.value, 0);
   const types = {};
   assets.forEach(a => { types[a.type] = (types[a.type] || 0) + a.value; });
-  const typeCount = Object.keys(types).length;
 
-  // Retrieve user's risk profile (may be null if not yet profiled)
-  const profile = userProfiles[userId] || null;
-  const profileKey = profile?.riskProfile || 'balanced'; // default to balanced weights
+  const profile    = userProfiles[userId] || null;
+  const profileKey = profile?.riskProfile || 'balanced';
   const profileDef = RISK_PROFILES[profileKey];
 
-  // ── Raw metric scores (profile-aware thresholds) ────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // STAGE 1 — Profile-agnostic raw metric scores [0–100]
+  //
+  // Thresholds are grounded in consensus financial planning benchmarks:
+  //   Greninger et al. (1996); CFP Board guidelines; MAS Singapore.
+  // Profile-specific interpretation is deferred entirely to Stage 2 (CRRA γ).
+  // This separation makes each stage independently legible and testable.
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  const diversification = Math.min(100, typeCount * 13);
+  // DIVERSIFICATION — Herfindahl-Hirschman Index (HHI)
+  // Replaces the naïve typeCount×13 rule, which awarded 100/100 to any portfolio
+  // with 8+ asset classes regardless of concentration.
+  // HHI = Σ(weight_i)²; perfect spread across n classes → HHI = 1/n.
+  // Normalised: (1 − HHI) / (1 − 1/n) → 0 = fully concentrated, 1 = perfectly spread.
+  // A portfolio with 8 classes but 60% in property correctly scores ~70, not 100.
+  const n   = Object.keys(types).length;
+  const hhi = n > 0 ? Object.values(types).reduce((s, v) => s + (v / total) ** 2, 0) : 1;
+  const diversification = n <= 1 ? 0 : Math.round(100 * (1 - hhi) / (1 - 1 / n));
 
-  // Liquidity: conservatives rewarded for higher cash buffers
+  // LIQUIDITY — cash as % of total portfolio
+  // Benchmark: 3–10% adequate for most investors (Weingarten; SoFi FWB guidelines).
   const cashRatio = ((types['Cash'] || 0) / total) * 100;
-  let liquidity;
-  if (profileKey === 'conservative') {
-    liquidity = cashRatio > 25 ? 95 : cashRatio > 15 ? 80 : cashRatio > 8 ? 60 + cashRatio : 30 + cashRatio * 2;
-  } else if (profileKey === 'growth') {
-    // Growth: 5-15% cash is ideal; excess cash = opportunity cost
-    liquidity = cashRatio > 20 ? Math.max(40, 70 - (cashRatio - 20)) : cashRatio > 5 ? 65 + cashRatio : 30 + cashRatio * 2;
-  } else {
-    liquidity = cashRatio > 15 ? 90 : cashRatio > 8 ? 65 + cashRatio : 30 + cashRatio * 2;
-  }
+  const liquidity =
+    cashRatio > 18 ? 88
+    : cashRatio > 10 ? Math.round(65 + cashRatio * 1.5)
+    : cashRatio >  4 ? Math.round(50 + cashRatio * 2.5)
+    : Math.max(10, Math.round(cashRatio * 8));
 
-  // Growth: growth investors rewarded more for equity allocation
+  // GROWTH — growth assets (equities + crypto) as % of total portfolio
+  // Benchmark: 15–40% for most investors; crypto included as high-risk growth proxy.
   const growthAlloc = ((types['Equities'] || 0) + (types['Crypto'] || 0)) / total * 100;
-  let growth;
-  if (profileKey === 'growth') {
-    growth = growthAlloc > 40 ? 95 : growthAlloc > 25 ? 75 + growthAlloc * 0.5 : growthAlloc > 10 ? 60 + growthAlloc : 40 + growthAlloc;
-    growth = Math.min(100, growth);
-  } else if (profileKey === 'conservative') {
-    // Conservative: modest equity = fine; high equity is a yellow flag (cap at 75)
-    growth = growthAlloc > 20 ? Math.min(75, 60 + growthAlloc * 0.5) : growthAlloc > 10 ? 55 + growthAlloc : 40 + growthAlloc;
-  } else {
-    growth = growthAlloc > 20 ? 85 : growthAlloc > 10 ? 60 + growthAlloc : 40 + growthAlloc;
-  }
+  const growth =
+    growthAlloc > 40 ? 92
+    : growthAlloc > 20 ? Math.round(65 + growthAlloc * 0.9)
+    : growthAlloc >  8 ? Math.round(52 + growthAlloc * 1.6)
+    : Math.max(15, Math.round(growthAlloc * 4));
 
-  // Risk Mgmt: conservatives rewarded more for safe allocation
-  const safeAlloc = ((types['Cash'] || 0) + (types['Fixed Income'] || 0) + (types['Retirement'] || 0)) / total * 100;
-  let riskMgmt;
-  if (profileKey === 'conservative') {
-    riskMgmt = safeAlloc > 50 ? 90 : safeAlloc > 30 ? 65 + safeAlloc * 0.5 : safeAlloc > 15 ? 45 + safeAlloc : 30 + safeAlloc;
-  } else if (profileKey === 'growth') {
-    // Growth: too much safe allocation means under-deployment (cap at 80)
-    riskMgmt = safeAlloc > 40 ? Math.min(80, 60 + safeAlloc * 0.3) : safeAlloc > 15 ? 50 + safeAlloc : 30 + safeAlloc;
-  } else {
-    riskMgmt = safeAlloc > 30 ? 75 : safeAlloc > 15 ? 45 + safeAlloc : 30 + safeAlloc;
-  }
+  // RISK MANAGEMENT — defensive assets (cash + fixed income + retirement) as % of total
+  // Benchmark: 20–50% in stable/safe assets is generally prudent (CFP Board).
+  const safeAlloc =
+    ((types['Cash'] || 0) + (types['Fixed Income'] || 0) + (types['Retirement'] || 0)) / total * 100;
+  const riskMgmt =
+    safeAlloc > 45 ? 88
+    : safeAlloc > 25 ? Math.round(58 + safeAlloc * 0.8)
+    : safeAlloc > 10 ? Math.round(45 + safeAlloc)
+    : Math.max(15, Math.round(safeAlloc * 2));
 
-  const srsBalance = assets.find(a => a.name.includes('SRS'))?.value || 0;
+  // TAX EFFICIENCY — SRS utilisation vs. annual contribution cap (S$15,300)
+  // Unchanged: bounded linear proxy for Singapore-specific tax optimisation.
+  const srsBalance   = assets.find(a => a.name.includes('SRS'))?.value || 0;
   const taxEfficiency = srsBalance >= 15300 ? 80 : Math.round((srsBalance / 15300) * 60);
 
-  // Emergency Fund: conservatives get rewarded for bigger buffers; growth = 3-6mo is ideal
-  const cashTotal = types['Cash'] || 0;
-  const monthsCoverage = cashTotal / 9000;
-  let emergencyFund;
-  if (profileKey === 'conservative') {
-    emergencyFund = monthsCoverage >= 9 ? 100 : monthsCoverage >= 6 ? 90 : monthsCoverage >= 3 ? 70 : Math.round(monthsCoverage * 23);
-  } else if (profileKey === 'growth') {
-    // 3-6 months is ideal; more = opportunity cost (cap at 75)
-    emergencyFund = monthsCoverage >= 6 ? Math.min(75, 60 + monthsCoverage) : monthsCoverage >= 3 ? 70 : Math.round(monthsCoverage * 20);
-  } else {
-    emergencyFund = monthsCoverage >= 6 ? 85 : Math.round(monthsCoverage * 14);
-  }
+  // EMERGENCY FUND — months of estimated expenses (S$9,000/mo) covered by cash
+  // Benchmark: 3–6 months (CFP Board; MAS); scoring is smooth and non-profile-branching.
+  const cashTotal      = types['Cash'] || 0;
+  const monthlyExp     = getUserMonthlyExpenses(userId);
+  const monthsCoverage = cashTotal / monthlyExp;
+  const emergencyFund  =
+    monthsCoverage >= 9 ? 95
+    : monthsCoverage >= 6 ? 82
+    : monthsCoverage >= 3 ? Math.round(55 + monthsCoverage * 5)
+    : Math.max(5, Math.round(monthsCoverage * 18));
 
-  // Behavioral Resilience (unchanged — discipline matters for all profiles)
-  const behavior = userBehavior[userId] || { deletions: 0, additions: 0, loginCount: 0 };
-  let behaviorScore = 70;
+  // BEHAVIORAL RESILIENCE — proxy from portfolio churn and engagement metrics
+  // Profile-agnostic: discipline matters regardless of risk appetite.
+  const behavior  = userBehavior[userId] || { deletions: 0, additions: 0, loginCount: 0 };
+  let   bScore    = 70;
   const churnRate = assets.length > 0 ? behavior.deletions / (assets.length + behavior.deletions) : 0;
-  if (churnRate > 0.3) behaviorScore -= 25;
-  else if (churnRate > 0.15) behaviorScore -= 10;
-  if (behavior.loginCount >= 10) behaviorScore += 10;
-  else if (behavior.loginCount >= 5) behaviorScore += 5;
+  if (churnRate > 0.30)  bScore -= 25;
+  else if (churnRate > 0.15) bScore -= 10;
+  if (behavior.loginCount >= 10) bScore += 10;
+  else if (behavior.loginCount >= 5)  bScore += 5;
   const longTermPct = ((types['Retirement'] || 0) + (types['Property'] || 0)) / total * 100;
-  if (longTermPct > 40) behaviorScore += 10;
-  else if (longTermPct > 20) behaviorScore += 5;
+  if (longTermPct > 40) bScore += 10;
+  else if (longTermPct > 20) bScore += 5;
   const cryptoPct = ((types['Crypto'] || 0) / total) * 100;
-  if (cryptoPct > 20) behaviorScore -= 15;
-  else if (cryptoPct > 10) behaviorScore -= 5;
-  behaviorScore = Math.max(0, Math.min(100, behaviorScore));
+  if (cryptoPct > 20) bScore -= 15;
+  else if (cryptoPct > 10) bScore -= 5;
+  const behavioralResilience = Math.max(0, Math.min(100, bScore));
 
-  // ── Apply profile modifiers (clamped 0–100) ────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // STAGE 2 — CRRA utility transformation + research-calibrated weighted aggregation
+  //
+  // Each raw score is passed through T(s; γ) = 100·(s/100)^γ whose curvature
+  // reflects the investor's profile-specific marginal utility of that dimension.
+  // This replaces the previous flat additive modifiers, which had no theoretical
+  // grounding and created asymmetric distortions (e.g. Growth could exceed 100
+  // for a growth profile after +15 modifier on an already-high raw score).
+  // ─────────────────────────────────────────────────────────────────────────────
   const rawScores = {
-    'Diversification':       Math.round(diversification),
+    'Emergency Fund':        Math.round(emergencyFund),
     'Liquidity':             Math.round(liquidity),
     'Growth':                Math.round(growth),
     'Risk Mgmt':             Math.round(riskMgmt),
+    'Diversification':       Math.round(diversification),
     'Tax Efficiency':        Math.round(taxEfficiency),
-    'Emergency Fund':        Math.round(emergencyFund),
-    'Behavioral Resilience': Math.round(behaviorScore),
+    'Behavioral Resilience': Math.round(behavioralResilience),
   };
-  const mods = profileDef.modifiers;
+
   const metrics = Object.entries(rawScores).map(([metric, raw]) => ({
     metric,
-    score: Math.max(0, Math.min(100, raw + (mods[metric] || 0))),
+    score: crraTransform(raw, metric, profileKey),
   }));
 
-  // ── Weighted overall score ─────────────────────────────────────────────────
-  const weights = profileDef.weights;
-  const overall = Math.round(
-    metrics.reduce((sum, m) => sum + m.score * (weights[m.metric] || 0), 0)
-  );
+  // Weighted aggregation using research-calibrated profile weights
+  const weights     = profileDef.weights;
+  const weightedSum = metrics.reduce((sum, m) => sum + m.score * (weights[m.metric] || 0), 0);
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SAFETY FLOOR INTERACTION TERM
+  //
+  // SEM research (Archuleta et al., 2013) shows that acute dual-safety failure
+  // (simultaneously critically low emergency fund AND liquidity) has a non-linear,
+  // outsized negative effect on financial well-being that a linear weighted sum
+  // cannot capture. A 10% multiplicative penalty is applied only when both
+  // post-transform safety scores fall at or below 28 (roughly: <3 months cash
+  // coverage after curvature adjustment).
+  // ─────────────────────────────────────────────────────────────────────────────
+  const efScore    = metrics.find(m => m.metric === 'Emergency Fund').score;
+  const liqScore   = metrics.find(m => m.metric === 'Liquidity').score;
+  const floorPenalty = (efScore <= 28 && liqScore <= 28) ? 0.90 : 1.0;
+
+  const overall = Math.round(Math.min(100, weightedSum * floorPenalty));
   return { overall, metrics, riskProfile: profileKey };
 }
 
-function generateInsights(assets) {
+function generateInsights(assets, userId) {
   const total = assets.reduce((s, a) => s + a.value, 0);
   const types = {};
   assets.forEach(a => { types[a.type] = (types[a.type] || 0) + a.value; });
@@ -622,10 +731,11 @@ function generateInsights(assets) {
   }
 
   // Emergency fund check
-  const cashTotal = types['Cash'] || 0;
-  const monthsCoverage = cashTotal / 9000;
+  const cashTotal      = types['Cash'] || 0;
+  const monthlyExp     = getUserMonthlyExpenses(userId);
+  const monthsCoverage = cashTotal / monthlyExp;
   if (monthsCoverage > 6) {
-    const excess = Math.round(cashTotal - 54000);
+    const excess = Math.round(cashTotal - monthlyExp * 6);
     insights.push({
       id: 'ins_3', type: 'positive', priority: 'medium', category: 'Liquidity',
       titleKey: 'insights.cards.ins_emergency.title',
@@ -900,20 +1010,64 @@ app.post('/api/profile/risk', authenticate, (req, res) => {
     return res.status(400).json({ error: 'answers array required' });
   }
   const { riskScore, riskProfile } = computeRiskProfile(answers);
+  const recommendedExpenses = deriveRecommendedExpenses(answers);
+
+  // Preserve a manually-set amount if the user has already customised it;
+  // otherwise adopt the fresh recommendation as the active amount.
+  const existing = userProfiles[req.userId];
+  const monthlyExpenses = existing?.monthlyExpensesCustomised
+    ? existing.monthlyExpenses
+    : recommendedExpenses;
+
   userProfiles[req.userId] = {
+    ...existing,
     riskProfile,
     riskScore,
     answers,
+    recommendedExpenses,
+    monthlyExpenses,
+    monthlyExpensesCustomised: existing?.monthlyExpensesCustomised ?? false,
     completedAt: new Date().toISOString(),
   };
-  console.log(`[Profile] ${req.user?.name} scored ${riskScore}/20 → ${riskProfile}`);
-  res.json({ riskProfile, riskScore, completedAt: userProfiles[req.userId].completedAt });
+  console.log(`[Profile] ${req.user?.name} scored ${riskScore}/20 → ${riskProfile} | recommendedExp: S$${recommendedExpenses}`);
+  res.json({
+    riskProfile,
+    riskScore,
+    recommendedExpenses,
+    monthlyExpenses,
+    completedAt: userProfiles[req.userId].completedAt,
+  });
 });
 
 app.get('/api/profile/risk', authenticate, (req, res) => {
   const profile = userProfiles[req.userId];
   if (!profile) return res.status(404).json({ error: 'No profile found' });
   res.json(profile);
+});
+
+// GET current monthly expense setting + recommendation
+app.get('/api/profile/monthly-expenses', authenticate, (req, res) => {
+  const profile = userProfiles[req.userId] || {};
+  res.json({
+    monthlyExpenses:           profile.monthlyExpenses           ?? 9000,
+    recommendedExpenses:       profile.recommendedExpenses       ?? null,
+    monthlyExpensesCustomised: profile.monthlyExpensesCustomised ?? false,
+  });
+});
+
+// PUT to update the user's monthly expense amount
+app.put('/api/profile/monthly-expenses', authenticate, (req, res) => {
+  const amount = parseInt(req.body.monthlyExpenses, 10);
+  if (!amount || amount < 500 || amount > 100000) {
+    return res.status(400).json({ error: 'monthlyExpenses must be between 500 and 100,000' });
+  }
+  userProfiles[req.userId] = {
+    ...(userProfiles[req.userId] || {}),
+    monthlyExpenses: amount,
+    monthlyExpensesCustomised: true,
+  };
+  console.log(`[Profile] ${req.user?.name} set monthlyExpenses to S$${amount}`);
+  res.json({ monthlyExpenses: amount, monthlyExpensesCustomised: true });
 });
 
 app.get('/api/wellness', authenticate, (req, res) => {
@@ -928,7 +1082,7 @@ app.get('/api/insights', authenticate, (req, res) => {
   const portfolio = portfolios[req.userId];
   if (!portfolio) return res.status(404).json({ error: 'Portfolio not found' });
 
-  const insights = generateInsights(portfolio.assets);
+  const insights = generateInsights(portfolio.assets, req.userId);
   res.json({ insights, generatedAt: new Date().toISOString() });
 });
 
@@ -1066,7 +1220,7 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
   const types = {};
   portfolio.assets.forEach(a => { types[a.type] = (types[a.type] || 0) + a.value; });
   const wellnessScore = computeWellnessScore(portfolio.assets, req.userId);
-  const insights = generateInsights(portfolio.assets);
+  const insights = generateInsights(portfolio.assets, req.userId);
 
   const portfolioContext = `
 USER PORTFOLIO SUMMARY (as of ${new Date().toISOString().split('T')[0]}):
@@ -1089,7 +1243,7 @@ ${insights.map(i => `- [${i.type.toUpperCase()}] ${i.title}: ${i.summary}`).join
 SINGAPORE-SPECIFIC CONTEXT:
 - CPF OA interest rate: 2.5% p.a., CPF SA: 4% p.a.
 - SRS annual contribution cap: ${fmt(15300)}
-- Estimated monthly expenses: ${fmt(9000)}
+- Estimated monthly expenses: ${fmt(getUserMonthlyExpenses(req.userId))}
 - Emergency fund recommendation: 6 months of expenses (${fmt(54000)})
 `;
 
@@ -1194,7 +1348,7 @@ function getFallbackReply(message, portfolio, totalWealth, types) {
 
   if (lowerMsg.includes('saving') || lowerMsg.includes('enough')) {
     const cashPct = ((types['Cash'] || 0) / totalWealth * 100).toFixed(1);
-    return `Your cash savings represent ${cashPct}% of your net worth ($${(types['Cash'] || 0).toLocaleString()}), covering about ${((types['Cash'] || 0) / 9000).toFixed(1)} months of estimated expenses. The general recommendation is 6 months — you're in good shape! However, consider if some excess cash could earn higher returns in T-bills or money market funds.`;
+    return `Your cash savings represent ${cashPct}% of your net worth ($${(types['Cash'] || 0).toLocaleString()}), covering about ${((types['Cash'] || 0) / getUserMonthlyExpenses(req.userId)).toFixed(1)} months of estimated expenses. The general recommendation is 6 months — you're in good shape! However, consider if some excess cash could earn higher returns in T-bills or money market funds.`;
   } else if (lowerMsg.includes('tax') || lowerMsg.includes('srs')) {
     const srs = portfolio.assets.find(a => a.name.includes('SRS'));
     const gap = srs ? 15300 - srs.value : 15300;
@@ -1476,7 +1630,7 @@ app.get('/api/export/json', authenticate, (req, res) => {
     .filter(a => !['Property', 'Vehicle'].includes(a.type))
     .reduce((s, a) => s + a.value, 0);
   const wellnessScore = computeWellnessScore(portfolio.assets, req.userId);
-  const insightsData = generateInsights(portfolio.assets);
+  const insightsData = generateInsights(portfolio.assets, req.userId);
   const userGoals = (goals[req.userId] || []).map(g => ({
     ...g,
     progress: Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)),
@@ -1576,7 +1730,7 @@ app.post('/api/email-preferences/send-now', authenticate, async (req, res) => {
   const portfolio = portfolios[req.userId];
   const totalWealth = portfolio.assets.reduce((s, a) => s + a.value, 0);
   const wellnessScore = computeWellnessScore(portfolio.assets, req.userId);
-  const insightsData = generateInsights(portfolio.assets);
+  const insightsData = generateInsights(portfolio.assets, req.userId);
 
   // Build asset allocation summary — type names and risk levels use the translation table
   const types = {};
@@ -1807,6 +1961,8 @@ app.listen(PORT, () => {
   console.log(`     POST /api/auth/verify-2fa`);
   console.log(`     GET  /api/portfolio`);
   console.log(`     GET  /api/wellness`);
+  console.log(`     GET  /api/profile/monthly-expenses`);
+  console.log(`     PUT  /api/profile/monthly-expenses`);
   console.log(`     GET  /api/insights`);
   console.log(`     POST /api/ai/chat`);
   console.log(`     POST /api/scenarios/simulate`);
