@@ -147,7 +147,17 @@
     "metricRiskMgmt": "Gest. de Riesgo",
     "metricTaxEfficiency": "Eficiencia Fiscal",
     "metricEmergencyFund": "Fondo de Emergencia",
-    "metricBehavioralResilience": "Resiliencia Conductual"
+    "metricBehavioralResilience": "Resiliencia Conductual",
+    "monthlyExpensesTitle": "Suposición de Gastos Mensuales",
+    "monthlyExpensesDesc": "Esta cifra se utiliza para calcular cuántos meses cubre tu fondo de emergencia. Ajústala a tu gasto real.",
+    "monthlyExpensesLabel": "Gastos mensuales",
+    "monthlyExpensesRec": "Recomendado según tu perfil: {{symbol}}{{amount}}",
+    "monthlyExpensesCustom": "Has establecido un importe personalizado.",
+    "monthlyExpensesReset": "Restablecer a la recomendación",
+    "monthlyExpensesSave": "Guardar",
+    "monthlyExpensesSaved": "¡Guardado!",
+    "monthlyExpensesError": "El importe debe estar entre {{min}} y {{max}}.",
+    "monthlyExpensesCoverage": "Con {{amount}}/mes, tu efectivo cubre {{months}} meses."
   },
   "insights": {
     "title": "Perspectivas IA y Coach",

@@ -53,6 +53,8 @@ const api = {
   submitFeedback(data) { return this.request('POST', '/feedback', data); },
   submitRating(stars, comment) { return this.request('POST', '/rating', { stars, comment }); },
   dismissRating() { return this.request('POST', '/rating/dismiss'); },
+  getMonthlyExpenses() { return this.request('GET', '/profile/monthly-expenses'); },
+  updateMonthlyExpenses(amount) { return this.request('PUT', '/profile/monthly-expenses', { monthlyExpenses: amount }); },
   saveRiskProfile(answers) { return this.request('POST', '/profile/risk', { answers }); },
   getRiskProfile() { return this.request('GET', '/profile/risk'); },
   getWellnessHistory() { return this.request('GET', '/wellness/history'); },
@@ -1870,9 +1872,69 @@ const WalletView = ({ portfolio, refreshPortfolio, displayCurrency, assetCurrenc
 };
 
 /* ─────────── ANALYTICS VIEW ─────────── */
-const AnalyticsView = ({ wellness, portfolio, displayCurrency, userRiskProfile, onRetakeAssessment }) => {
+const AnalyticsView = ({ wellness, portfolio, displayCurrency, userRiskProfile, onRetakeAssessment, refreshPortfolio }) => {
   const { t } = useTranslation();
+
+  // ── Monthly expenses state ────────────────────────────────────────────────
+  const [expensesData, setExpensesData]   = useState(null);   // { monthlyExpenses, recommendedExpenses, monthlyExpensesCustomised }
+  const [inputAmount, setInputAmount]     = useState('');
+  const [expensesSaving, setExpensesSaving] = useState(false);
+  const [expensesSaved, setExpensesSaved] = useState(false);
+  const [expensesError, setExpensesError] = useState('');
+
+  useEffect(() => {
+    api.getMonthlyExpenses()
+      .then(d => { setExpensesData(d); setInputAmount(String(d.monthlyExpenses)); })
+      .catch(() => {});
+  }, []);
+
+  const cashBalance   = (portfolio?.assets || [])
+    .filter(a => a.type === 'Cash')
+    .reduce((s, a) => s + a.value, 0);
+  const currentAmount = expensesData?.monthlyExpenses ?? 9000;
+  const monthsCovered = currentAmount > 0 ? (cashBalance / currentAmount).toFixed(1) : '–';
+  const cur           = CURRENCIES[displayCurrency] ?? CURRENCIES.SGD;
+
+  const handleSaveExpenses = async () => {
+    const parsed = parseInt(inputAmount.replace(/[^0-9]/g, ''), 10);
+    if (!parsed || parsed < 500 || parsed > 100000) {
+      setExpensesError(t('analytics.monthlyExpensesError', { min: '500', max: '100,000' }));
+      return;
+    }
+    setExpensesError('');
+    setExpensesSaving(true);
+    try {
+      const updated = await api.updateMonthlyExpenses(parsed);
+      setExpensesData(prev => ({ ...prev, ...updated }));
+      setInputAmount(String(updated.monthlyExpenses));
+      setExpensesSaved(true);
+      setTimeout(() => setExpensesSaved(false), 2000);
+      // Wellness scores depend on monthly expenses — refresh after saving
+      await refreshPortfolio();
+    } catch (e) {
+      setExpensesError(e.message || t('analytics.monthlyExpensesError', { min: '500', max: '100,000' }));
+    }
+    setExpensesSaving(false);
+  };
+
+  const handleResetExpenses = async () => {
+    const rec = expensesData?.recommendedExpenses;
+    if (!rec) return;
+    setInputAmount(String(rec));
+    setExpensesError('');
+    setExpensesSaving(true);
+    try {
+      const updated = await api.updateMonthlyExpenses(rec);
+      setExpensesData(prev => ({ ...prev, ...updated, monthlyExpensesCustomised: false }));
+      setExpensesSaved(true);
+      setTimeout(() => setExpensesSaved(false), 2000);
+      await refreshPortfolio();
+    } catch {}
+    setExpensesSaving(false);
+  };
+
   if (!wellness || !portfolio) return <Loader />;
+
   const tipKeys = {
     "Diversification": "analytics.tipDiversification",
     "Liquidity": "analytics.tipLiquidity",
@@ -1882,7 +1944,6 @@ const AnalyticsView = ({ wellness, portfolio, displayCurrency, userRiskProfile, 
     "Emergency Fund": "analytics.tipEmergencyFund",
     "Behavioral Resilience": "analytics.tipBehavioralResilience",
   };
-  // Map server metric keys → translation keys for display labels
   const metricLabelKeys = {
     "Diversification": "analytics.metricDiversification",
     "Liquidity": "analytics.metricLiquidity",
@@ -1893,10 +1954,10 @@ const AnalyticsView = ({ wellness, portfolio, displayCurrency, userRiskProfile, 
     "Behavioral Resilience": "analytics.metricBehavioralResilience",
   };
   const metricLabel = (key) => metricLabelKeys[key] ? t(metricLabelKeys[key]) : key;
-  // Use translated labels as radar subjects so the chart axis labels are translated too
   const radarData = wellness.metrics.map(m => ({ subject: metricLabel(m.metric), A: m.score, fullMark: 100 }));
   const profileKey = userRiskProfile?.riskProfile ?? wellness.riskProfile ?? 'balanced';
   const meta = PROFILE_META[profileKey] || PROFILE_META.balanced;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div className="animate-in" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
@@ -1922,6 +1983,101 @@ const AnalyticsView = ({ wellness, portfolio, displayCurrency, userRiskProfile, 
           {t("analytics.retakeAssessment")}
         </button>
       </div>
+
+      {/* Monthly Expenses Card */}
+      <div className="animate-in card" style={{ padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <DollarSign size={16} color="var(--accent-teal)" />
+              <h3 style={{ fontSize: 15, fontWeight: 600 }}>{t("analytics.monthlyExpensesTitle")}</h3>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>
+              {t("analytics.monthlyExpensesDesc")}
+            </p>
+
+            {/* Recommended hint */}
+            {expensesData?.recommendedExpenses && (
+              <div style={{ fontSize: 12, color: "var(--accent-teal)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <Info size={13} />
+                {t("analytics.monthlyExpensesRec", {
+                  symbol: 'S$',
+                  amount: expensesData.recommendedExpenses.toLocaleString('en-SG'),
+                })}
+              </div>
+            )}
+            {expensesData?.monthlyExpensesCustomised && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle size={12} color="var(--accent-green)" />
+                {t("analytics.monthlyExpensesCustom")}
+              </div>
+            )}
+
+            {/* Input row */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--text-muted)", pointerEvents: "none" }}>S$</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={500}
+                  max={100000}
+                  step={500}
+                  value={inputAmount}
+                  onChange={e => { setInputAmount(e.target.value); setExpensesError(''); setExpensesSaved(false); }}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveExpenses()}
+                  style={{ paddingLeft: 34, width: 150, fontSize: 14, fontWeight: 600 }}
+                />
+              </div>
+              <button
+                className="btn-primary"
+                onClick={handleSaveExpenses}
+                disabled={expensesSaving || String(inputAmount) === String(currentAmount)}
+                style={{ padding: "10px 18px", fontSize: 13 }}
+              >
+                {expensesSaved ? t("analytics.monthlyExpensesSaved") : t("analytics.monthlyExpensesSave")}
+              </button>
+              {expensesData?.monthlyExpensesCustomised && expensesData?.recommendedExpenses && (
+                <button
+                  className="btn-ghost"
+                  onClick={handleResetExpenses}
+                  disabled={expensesSaving}
+                  style={{ fontSize: 12, color: "var(--text-muted)" }}
+                >
+                  {t("analytics.monthlyExpensesReset")}
+                </button>
+              )}
+            </div>
+            {expensesError && (
+              <p style={{ fontSize: 12, color: "var(--accent-red)", marginTop: 6 }}>{expensesError}</p>
+            )}
+          </div>
+
+          {/* Coverage summary pill */}
+          <div style={{
+            background: "var(--bg-secondary)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)", padding: "16px 20px",
+            minWidth: 180, textAlign: "center", flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+              {t("analytics.metricEmergencyFund")}
+            </div>
+            <div className="font-display" style={{
+              fontSize: 28, fontWeight: 700,
+              color: parseFloat(monthsCovered) >= 6 ? "var(--accent-green)" : parseFloat(monthsCovered) >= 3 ? "var(--accent-gold)" : "var(--accent-red)",
+            }}>
+              {monthsCovered}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              {t("analytics.monthlyExpensesCoverage", {
+                amount: `S$${currentAmount.toLocaleString('en-SG')}`,
+                months: monthsCovered,
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="animate-in" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 20 }}>
         <div className="card" style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center" }}>
           <WealthScore score={wellness.overall} size={180} />
@@ -2893,7 +3049,7 @@ const App = () => {
     switch (currentView) {
       case "dashboard":  return <DashboardView portfolio={portfolio} wellness={wellness} insights={insights} onNavigate={setCurrentView} user={user} displayCurrency={displayCurrency} assetCurrencies={assetCurrencies} />;
       case "wallet":     return <WalletView portfolio={portfolio} refreshPortfolio={refreshPortfolio} displayCurrency={displayCurrency} assetCurrencies={assetCurrencies} updateAssetCurrency={updateAssetCurrency} />;
-      case "analytics":  return <AnalyticsView portfolio={portfolio} wellness={wellness} displayCurrency={displayCurrency} userRiskProfile={userRiskProfile} onRetakeAssessment={handleRetakeAssessment} />;
+      case "analytics":  return <AnalyticsView portfolio={portfolio} wellness={wellness} displayCurrency={displayCurrency} userRiskProfile={userRiskProfile} onRetakeAssessment={handleRetakeAssessment} refreshPortfolio={refreshPortfolio} />;
       case "insights":   return <InsightsView insights={insights} displayCurrency={displayCurrency} />;
       case "goals":      return <GoalsView displayCurrency={displayCurrency} />;
       case "scenarios":  return <ScenarioView displayCurrency={displayCurrency} />;

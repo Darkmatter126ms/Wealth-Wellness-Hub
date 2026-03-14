@@ -147,7 +147,17 @@
     "metricRiskMgmt": "Risk Mgmt",
     "metricTaxEfficiency": "Tax Efficiency",
     "metricEmergencyFund": "Emergency Fund",
-    "metricBehavioralResilience": "Behavioral Resilience"
+    "metricBehavioralResilience": "Behavioral Resilience",
+    "monthlyExpensesTitle": "Monthly Expense Assumption",
+    "monthlyExpensesDesc": "This figure is used to calculate how many months your emergency fund covers. Adjust it to match your actual spending.",
+    "monthlyExpensesLabel": "Monthly expenses",
+    "monthlyExpensesRec": "Recommended based on your profile: {{symbol}}{{amount}}",
+    "monthlyExpensesCustom": "You have set a custom amount.",
+    "monthlyExpensesReset": "Reset to recommendation",
+    "monthlyExpensesSave": "Save",
+    "monthlyExpensesSaved": "Saved!",
+    "monthlyExpensesError": "Amount must be between {{min}} and {{max}}.",
+    "monthlyExpensesCoverage": "At {{amount}}/mo, your cash covers {{months}} months."
   },
   "insights": {
     "title": "AI Insights & Coach",

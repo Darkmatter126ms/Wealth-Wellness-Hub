@@ -147,7 +147,17 @@
     "metricRiskMgmt": "Gest. des risques",
     "metricTaxEfficiency": "Efficacité fiscale",
     "metricEmergencyFund": "Fonds d’urgence",
-    "metricBehavioralResilience": "Résilience comportementale"
+    "metricBehavioralResilience": "Résilience comportementale",
+    "monthlyExpensesTitle": "Hypothèse de Dépenses Mensuelles",
+    "monthlyExpensesDesc": "Ce chiffre sert à calculer combien de mois votre fonds d'urgence peut couvrir. Ajustez-le selon vos dépenses réelles.",
+    "monthlyExpensesLabel": "Dépenses mensuelles",
+    "monthlyExpensesRec": "Recommandé selon votre profil : {{symbol}}{{amount}}",
+    "monthlyExpensesCustom": "Vous avez défini un montant personnalisé.",
+    "monthlyExpensesReset": "Réinitialiser à la recommandation",
+    "monthlyExpensesSave": "Enregistrer",
+    "monthlyExpensesSaved": "Enregistré !",
+    "monthlyExpensesError": "Le montant doit être compris entre {{min}} et {{max}}.",
+    "monthlyExpensesCoverage": "À {{amount}}/mois, votre trésorerie couvre {{months}} mois."
   },
   "insights": {
     "title": "Perspectives IA et Coach",

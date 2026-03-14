@@ -147,7 +147,17 @@
     "metricRiskMgmt": "जोखिम प्रबंधन",
     "metricTaxEfficiency": "कर दक्षता",
     "metricEmergencyFund": "आपातकालीन निधि",
-    "metricBehavioralResilience": "व्यवहारिक लचीलापन"
+    "metricBehavioralResilience": "व्यवहारिक लचीलापन",
+    "monthlyExpensesTitle": "मासिक व्यय अनुमान",
+    "monthlyExpensesDesc": "यह आंकड़ा बताता है कि आपका आपातकालीन फंड कितने महीने चल सकता है। अपने वास्तविक खर्च के अनुसार इसे समायोजित करें।",
+    "monthlyExpensesLabel": "मासिक खर्च",
+    "monthlyExpensesRec": "आपकी प्रोफ़ाइल के आधार पर अनुशंसित: {{symbol}}{{amount}}",
+    "monthlyExpensesCustom": "आपने एक कस्टम राशि निर्धारित की है।",
+    "monthlyExpensesReset": "अनुशंसित राशि पर रीसेट करें",
+    "monthlyExpensesSave": "सहेजें",
+    "monthlyExpensesSaved": "सहेजा गया!",
+    "monthlyExpensesError": "राशि {{min}} और {{max}} के बीच होनी चाहिए।",
+    "monthlyExpensesCoverage": "{{amount}}/माह पर, आपकी नकदी {{months}} महीने चलेगी।"
   },
   "insights": {
     "title": "AI अंतर्दृष्टि और कोच",

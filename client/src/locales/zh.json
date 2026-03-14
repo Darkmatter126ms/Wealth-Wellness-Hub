@@ -147,7 +147,17 @@
     "metricRiskMgmt": "风险管理",
     "metricTaxEfficiency": "税务效率",
     "metricEmergencyFund": "紧急备用金",
-    "metricBehavioralResilience": "行为韧性"
+    "metricBehavioralResilience": "行为韧性",
+    "monthlyExpensesTitle": "月度支出假设",
+    "monthlyExpensesDesc": "此数字用于计算您的应急资金可覆盖的月数。请根据实际支出进行调整。",
+    "monthlyExpensesLabel": "每月支出",
+    "monthlyExpensesRec": "根据您的档案推荐：{{symbol}}{{amount}}",
+    "monthlyExpensesCustom": "您已设置自定义金额。",
+    "monthlyExpensesReset": "重置为推荐值",
+    "monthlyExpensesSave": "保存",
+    "monthlyExpensesSaved": "已保存！",
+    "monthlyExpensesError": "金额须在 {{min}} 至 {{max}} 之间。",
+    "monthlyExpensesCoverage": "以 {{amount}}/月计，您的现金可覆盖 {{months}} 个月。"
   },
   "insights": {
     "title": "AI 洞察与教练",
