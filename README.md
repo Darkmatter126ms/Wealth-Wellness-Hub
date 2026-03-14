@@ -183,6 +183,44 @@ wealthwell/
 
 ---
 
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/auth/login | Login with email/password |
+| POST | /api/auth/verify-2fa | Verify authenticator code |
+| POST | /api/auth/logout | End session |
+| GET | /api/portfolio | Get all assets + allocation |
+| POST | /api/portfolio/assets | Add new asset |
+| DELETE | /api/portfolio/assets/:id | Remove asset |
+| GET | /api/wellness | Get wellness score + metrics |
+| GET | /api/insights | Get AI-generated insights |
+| POST | /api/ai/chat | Chat with AI coach |
+| POST | /api/scenarios/simulate | Run scenario simulation |
+| POST | /api/payments/create-checkout | Create Stripe checkout |
+| GET | /api/payments/subscription | Get subscription status |
+| GET | /api/user/profile | Get user profile |
+| PUT | /api/user/profile | Update profile |
+| POST   | /api/profile/risk                  | Save risk profile answers + derive expense recommendation |
+| GET    | /api/profile/risk                  | Get current risk profile                                  |
+| GET    | /api/profile/monthly-expenses      | Get monthly expense setting + profile recommendation      |
+| PUT    | /api/profile/monthly-expenses      | Update monthly expense assumption                         |
+| GET    | /api/wellness/history              | Get wellness score history                                |
+| GET    | /api/email-preferences             | Get email report preferences                              |
+| PUT    | /api/email-preferences             | Update email report preferences                           |
+| POST   | /api/email-preferences/send-now    | Send report email immediately                             |
+| GET    | /api/export/csv                    | Export portfolio as CSV                                   |
+| GET    | /api/export/json                   | Export full report as JSON                                |
+| GET    | /api/fx-rates                      | Get live FX rates (base SGD)                              |
+| GET    | /api/goals                         | Get financial goals                                       |
+| POST   | /api/goals                         | Create a goal                                             |
+| PUT    | /api/goals/:id                     | Update a goal                                             |
+| DELETE | /api/goals/:id                     | Delete a goal                                             |
+| POST   | /api/feedback                      | Submit feedback                                           |
+| POST   | /api/rating                        | Submit app rating                                         |
+
+---
+
 ## 🇸🇬 Singapore Context
 
 - CPF (OA/SA), SRS, HDB, COE references
