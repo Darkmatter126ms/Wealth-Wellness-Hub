@@ -239,3 +239,9 @@ wealthwell/
 - **Auth:** Bearer token sessions + TOTP-ready 2FA
 - **Payments:** Stripe integration (mock demo)
 - **Deployment:** Docker + Docker Compose
+
+## Contributor
+
+| Name | Email | Website |
+|---------|---------------|------------|
+| Allen Lu Zhao Quan | ALLE0002@e.ntu.edu.sg | [Portfolio](https://allenlu.vercel.app) |
